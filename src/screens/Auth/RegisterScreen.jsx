@@ -3,10 +3,8 @@ import {
   View,
   Alert,
   Animated,
-  KeyboardAvoidingView,
   Platform,
   Keyboard,
-  ScrollView,
   StatusBar,
   ActivityIndicator,
   TouchableOpacity,
@@ -16,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import axios from 'axios';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 // Components
 import RegistrationHeader from '../../components/common/RegistrationHeader';
@@ -24,24 +23,24 @@ import OTPStep from '../../components/registration/OTPStep';
 import PersonalInfoStep from '../../components/registration/PersonalInfoStep';
 import DocumentStep from '../../components/registration/DocumentStep';
 import BankDetailStep from '../../components/registration/BankDetailStep';
+import VehicleStep from '../../components/registration/VehicleStep';
+
 
 // Utils & Config
 import { THEME } from '../../themes/colors';
 import { API_URL } from '../../config/config';
 
-const RegisterScreen = ({ navigation }) => {
-  /* ---------- State ---------- */
+const RegisterScreen = ({ route, navigation }) => {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Phone & OTP
+  const [userTypeKey, setUserTypeKey] = useState();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [timerRef, setTimerRef] = useState(null);
 
-  // Consolidated form data
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -63,13 +62,14 @@ const RegisterScreen = ({ navigation }) => {
     account_number: '',
     ifsc: '',
     declaration: false,
+    vehicle_category_id: '',
+    vehicle_model_id: '',
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState({});
   const [accessToken, setAccessToken] = useState('');
 
-  /* ---------- Animation refs & Effects (unchanged) ---------- */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -102,7 +102,22 @@ const RegisterScreen = ({ navigation }) => {
     return () => timerRef && clearInterval(timerRef);
   }, [timerRef]);
 
-  /* ---------- Helpers (unchanged) ---------- */
+  useEffect(() => {
+    const key = route.params?.user_type_key;
+    if (key) {
+        setUserTypeKey(key);
+        console.log('User Type Key received:', key);
+    } else {
+        console.warn('User Type Key not received!');
+        Alert.alert(
+        'Error',
+        'Could not determine user type. Please go back and select a role.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+        );
+    }
+  }, [route.params?.user_type_key]);
+
+
   const formatPhoneNumber = txt =>
     txt.length <= 3
       ? txt
@@ -149,23 +164,24 @@ const RegisterScreen = ({ navigation }) => {
     },
     [clearFieldError],
   );
-
-  const getTotalSteps = () => 5;
+  
+  const getTotalSteps = () => 6;
 
   const getStepInfo = () =>
     [
       { title: 'Phone Verification', subtitle: 'Secure your account' },
-      { title: 'Verify Code', subtitle: 'Enter the 6-digit OTP' },
+      { title: 'Verify Code', subtitle: 'Enter the 4-digit OTP' },
       { title: 'Personal Info', subtitle: 'Tell us about yourself' },
       { title: 'Documents', subtitle: 'Verify your identity' },
       { title: 'Bank Details', subtitle: 'Complete your setup' },
+      { title: 'Vehicle Details', subtitle: 'Add your vehicle information' },
     ][step - 1];
 
-  /* ---------- API calls ---------- */
   const sendOTP = async () => {
     setIsLoading(true);
     try {
       const res = await axios.post(`${API_URL}/api/vendor/auth/send-otp`, {
+        user_type_key: userTypeKey,
         contact_number: phoneNumber,
       });
       if (res.data?.success) {
@@ -186,8 +202,6 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  // In RegisterScreen.js
-
   const verifyOTP = async () => {
     setIsLoading(true);
     try {
@@ -196,7 +210,6 @@ const RegisterScreen = ({ navigation }) => {
         otp,
       });
 
-      // 👇 FIX: Update the path to the access token here
       const token = res.data?.data?.access_token;
 
       if (res.data?.success && token) {
@@ -225,41 +238,49 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
-    // 👇 FIX #2: Add a guard clause to ensure the token exists before proceeding
     if (!accessToken) {
       Alert.alert(
         'Session Expired',
         'Your verification token is missing. Please restart the registration process.',
       );
-      // Optionally, navigate the user back to the first step or login
-      // setStep(1);
       return;
     }
 
     setIsLoading(true);
-    const registrationData = new FormData();
-
-    Object.keys(formData).forEach(key => {
-      if (key === 'dob' && formData.dob) {
-        registrationData.append(
-          'dob',
-          formData.dob.toISOString().split('T')[0],
-        );
-      } else if (key === 'aadhaar_front' && formData.aadhaar_front) {
-        registrationData.append('aadhaar_front', {
-          uri: formData.aadhaar_front.uri,
-          type: formData.aadhaar_front.type,
-          name: formData.aadhaar_front.fileName,
-        });
-      } else if (formData[key] !== null) {
-        registrationData.append(key, String(formData[key]));
-      }
-    });
-
-    // Also append the phone number used for registration
-    registrationData.append('contact_number', phoneNumber);
 
     try {
+      const registrationData = new FormData();
+      const excludeFields = ['password'];
+
+      Object.keys(formData).forEach(key => {
+        if (excludeFields.includes(key)) {
+          return;
+        }
+
+        const value = formData[key];
+
+        if (key === 'dob' && value) {
+          const dobString = new Date(value).toISOString().split('T')[0]; // YYYY-MM-DD
+          registrationData.append('dob', dobString);
+        } else if (key === 'aadhaar_front' && value) {
+          registrationData.append('aadhaar_front', {
+            uri: value.uri,
+            type: value.type,
+            name: value.fileName,
+          });
+        } else if (key === 'declaration' || key === 'same_address') {
+          registrationData.append(key, value ? '1' : '0');
+        } else if (value !== null && value !== '' && value !== undefined) {
+          registrationData.append(key, String(value));
+        }
+      });
+      
+      // --- MODIFIED: Add userTypeKey to the submission data ---
+      if (userTypeKey) {
+          registrationData.append('user_type_key', userTypeKey);
+      }
+      registrationData.append('contact_number', phoneNumber);
+
       const res = await axios.post(
         `${API_URL}/api/vendor/auth/complete-registration`,
         registrationData,
@@ -274,21 +295,20 @@ const RegisterScreen = ({ navigation }) => {
       if (res.data?.success) {
         Alert.alert(
           'Registration Successful!',
-          'Your account has been created.',
+          'Your account has been created successfully.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
         );
-        navigation.navigate('Login');
       } else {
-        Alert.alert(
-          'Registration Failed',
-          res.data?.message || 'An unknown error occurred.',
-        );
+          const errorMessages = res.data?.errors 
+              ? Object.values(res.data.errors).flat().join('\n')
+              : res.data?.message;
+        Alert.alert('Registration Failed', errorMessages || 'An unknown error occurred.');
       }
     } catch (err) {
-      Alert.alert(
-        'An Error Occurred',
-        err.response?.data?.message ||
-          'Please check your connection and try again.',
-      );
+        const errorMessages = err.response?.data?.errors 
+            ? Object.values(err.response.data.errors).flat().join('\n')
+            : err.response?.data?.message;
+      Alert.alert('Registration Error', errorMessages || 'Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -297,72 +317,87 @@ const RegisterScreen = ({ navigation }) => {
   const startCountdown = (sec = 60) => {
     setIsRateLimited(true);
     setCountdown(sec);
-    setErrors(p => ({
-      ...p,
-      phoneNumber: `Please wait ${sec} seconds before requesting another OTP`,
-    }));
-    const t = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) {
-          clearInterval(t);
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
           setIsRateLimited(false);
-          clearFieldError('phoneNumber');
           return 0;
         }
-        const n = c - 1;
-        setErrors(p => ({
-          ...p,
-          phoneNumber: `Please wait ${n} seconds before requesting another OTP`,
-        }));
-        return n;
+        return prev - 1;
       });
     }, 1000);
-    setTimerRef(t);
+    setTimerRef(timer);
   };
-
-  /* ---------- Validation (unchanged) ---------- */
+  
   const validateStep = () => {
     const e = {};
     if (step === 1) {
       if (!/^[6-9]\d{9}$/.test(phoneNumber))
         e.phoneNumber = 'Valid 10-digit number required';
     } else if (step === 2) {
-      if (otp.length !== 6) e.otp = 'Enter the 6-digit OTP';
+      if (otp.length !== 4) e.otp = 'Enter the 4-digit OTP';
     } else if (step === 3) {
       if (!formData.name.trim()) e.name = 'Name required';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
         e.email = 'Valid email required';
-      if (formData.password.length < 6) e.password = 'Min 6 characters';
+      if (!formData.password || formData.password.length < 8)
+        e.password = 'Password must be at least 8 characters';
       if (!formData.dob) e.dob = 'Select DOB';
       if (!formData.gender) e.gender = 'Select gender';
       if (!/^[6-9]\d{9}$/.test(formData.emergency_contact))
         e.emergency_contact = 'Valid emergency contact';
     } else if (step === 4) {
-      if (!/^\d{12}$/.test(formData.aadhar_number))
-        e.aadhar_number = 'Valid 12-digit Aadhaar required';
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_number))
-        e.pan_number = 'Valid PAN format required';
-      if (!formData.rc_number.trim()) e.rc_number = 'RC Number required';
-      if (!formData.aadhaar_front)
-        e.aadhaar_front = 'Aadhaar front image required';
-      if (!formData.full_address.trim()) e.full_address = 'Address required';
-      if (!formData.state.trim()) e.state = 'State required';
-      if (!formData.city.trim()) e.city = 'City required';
-      if (!/^\d{6}$/.test(formData.pincode))
-        e.pincode = 'Valid 6-digit Pincode required';
+      if (!formData.aadhar_number.trim())
+        e.aadhar_number = 'Aadhar number required';
+      if (!formData.pan_number.trim()) e.pan_number = 'PAN number required';
     } else if (step === 5) {
       if (!formData.bank_name.trim()) e.bank_name = 'Bank name required';
-      if (!/^\d{9,18}$/.test(formData.account_number))
-        e.account_number = 'Valid account number required';
-      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifsc))
-        e.ifsc = 'Valid 11-character IFSC code required';
-      if (!formData.declaration) e.declaration = 'You must agree to the terms';
+      if (!formData.account_number.trim())
+        e.account_number = 'Account number required';
+      if (!formData.ifsc.trim()) e.ifsc = 'IFSC code required';
+      if (!formData.declaration)
+        e.declaration = 'Please accept the declaration';
+    } else if (step === 6) {
+        if (!formData.vehicle_category_id) e.vehicle_category_id = 'Please select a category';
+        if (!formData.vehicle_model_id) e.vehicle_model_id = 'Please select a vehicle model';
     }
     setErrors(e);
-    return !Object.keys(e).length;
+    return Object.keys(e).length === 0;
   };
 
-  /* ---------- Navigation & Render (unchanged) ---------- */
+  const isCurrentStepValid = () => {
+    if (step === 1) {
+      return /^[6-9]\d{9}$/.test(phoneNumber);
+    } else if (step === 2) {
+      // --- MODIFIED: Changed OTP length check to 4 ---
+      return otp.length === 4;
+    } else if (step === 3) {
+      return (
+        formData.name.trim() &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
+        formData.password &&
+        formData.password.length >= 8 &&
+        formData.dob &&
+        formData.gender &&
+        /^[6-9]\d{9}$/.test(formData.emergency_contact)
+      );
+    } else if (step === 4) {
+      return formData.aadhar_number.trim() && formData.pan_number.trim();
+    } else if (step === 5) {
+      return (
+        formData.bank_name.trim() &&
+        formData.account_number.trim() &&
+        formData.ifsc.trim() &&
+        formData.declaration
+      );
+    } else if (step === 6) {
+        return formData.vehicle_category_id && formData.vehicle_model_id;
+    }
+    return false;
+  };
+  
+  // --- MODIFIED: Update next button logic ---
   const handleNext = () => {
     if (!validateStep()) return;
     switch (step) {
@@ -374,9 +409,10 @@ const RegisterScreen = ({ navigation }) => {
         break;
       case 3:
       case 4:
+      case 5: // Now step 5 just proceeds to the next step
         setStep(s => s + 1);
         break;
-      case 5:
+      case 6: // Final submission is now on step 6
         handleRegister();
         break;
     }
@@ -385,6 +421,7 @@ const RegisterScreen = ({ navigation }) => {
   const handleBack = () =>
     step > 1 && step !== 3 ? setStep(step - 1) : navigation.goBack();
 
+  // --- MODIFIED: Add the new VehicleStep to the renderer ---
   const renderCurrentStep = () =>
     ({
       1: (
@@ -438,6 +475,11 @@ const RegisterScreen = ({ navigation }) => {
           {...{ formData, setFormData, errors, clearFieldError }}
         />
       ),
+      6: (
+          <VehicleStep
+            {...{ formData, setFormData, errors, clearFieldError }}
+          />
+      )
     })[step] || null;
 
   const getButtonText = () => {
@@ -445,15 +487,24 @@ const RegisterScreen = ({ navigation }) => {
     if (step === 1)
       return isRateLimited ? `Wait ${countdown}s` : 'Send Verification Code';
     if (step === 2) return 'Verify & Continue';
-    if (step === 5) return 'Complete Registration';
+    // --- MODIFIED: Update button text for the final step ---
+    if (step === 6) return 'Complete Registration';
     return 'Continue';
   };
 
-  const isButtonDisabled = () => isLoading || (step === 1 && isRateLimited);
+  const isButtonDisabled = () => {
+    if (isLoading) return true;
+    if (step === 1 && isRateLimited) return true;
+    return !isCurrentStepValid();
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.primaryDark} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={THEME.primaryDark}
+        translucent={false}
+      />
       <RegistrationHeader
         onBack={handleBack}
         title={getStepInfo().title}
@@ -474,47 +525,38 @@ const RegisterScreen = ({ navigation }) => {
           ]}
         />
       </View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
+
+      <KeyboardAwareScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onPress={Keyboard.dismiss}
-          accessible={false}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
         >
-          <Animated.View
-            style={{
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            }}
-          >
-            {renderCurrentStep()}
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          {renderCurrentStep()}
+        </Animated.View>
+      </KeyboardAwareScrollView>
+
       <View style={styles.bottomContainer}>
         <TouchableOpacity onPress={handleNext} disabled={isButtonDisabled()}>
           <LinearGradient
             colors={
               isButtonDisabled()
-                ? ['#B0BEC5', '#90A4AE']
-                : THEME.primaryGradient
+                ? ['#BDBDBD', '#BDBDBD']
+                : [THEME.primary, THEME.primaryDark]
             }
             style={styles.nextButton}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <>
-                <Text style={styles.buttonText}>{getButtonText()}</Text>
-                {!isButtonDisabled() && step < 5 && (
-                  <Text style={styles.buttonArrow}>→</Text>
-                )}
-              </>
+              <Text style={styles.buttonText}>{getButtonText()}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -523,24 +565,32 @@ const RegisterScreen = ({ navigation }) => {
   );
 };
 
-/* ---------- Styles (unchanged) ---------- */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: THEME.background },
-  flex: { flex: 1 },
-  progressContainer: { height: 4, backgroundColor: THEME.borderLight },
-  progressBar: { height: '100%', backgroundColor: THEME.primary },
-  scrollView: { flex: 1 },
-  scrollContent: { flexGrow: 1, padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.background,
+  },
+  progressContainer: {
+    height: 4,
+    backgroundColor: THEME.borderLight,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: THEME.primary,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: THEME.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
   bottomContainer: {
     padding: 20,
-    backgroundColor: THEME.surface,
+    backgroundColor: THEME.background,
     borderTopWidth: 1,
     borderTopColor: THEME.borderLight,
-    shadowColor: THEME.shadowLight,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   nextButton: {
     borderRadius: 16,
@@ -558,13 +608,6 @@ const styles = StyleSheet.create({
     color: THEME.textOnPrimary,
     fontSize: 15,
     fontWeight: '700',
-    marginRight: 8,
-  },
-  buttonArrow: {
-    color: THEME.textOnPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
-    paddingBottom: 6,
   },
 });
 

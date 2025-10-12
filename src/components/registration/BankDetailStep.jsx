@@ -29,7 +29,7 @@ const BankDetailStep = ({
             clearFieldError('bank_name');
           }}
           error={errors.bank_name}
-          icon="🏦"
+          // icon="🏦"
         />
 
         <ModernInput
@@ -40,7 +40,7 @@ const BankDetailStep = ({
             clearFieldError('account_number');
           }}
           error={errors.account_number}
-          icon="🔢"
+          // icon="🔢"
           keyboardType="numeric"
         />
 
@@ -52,7 +52,7 @@ const BankDetailStep = ({
             clearFieldError('ifsc');
           }}
           error={errors.ifsc}
-          icon="🏛️"
+          // icon="🏛️"
           autoCapitalize="characters"
           maxLength={11}
         />

@@ -30,11 +30,6 @@ const PhoneStep = ({
             errors.phoneNumber && styles.inputError,
           ]}
         >
-          <View style={styles.countrySection}>
-            <Text style={styles.flagIcon}>🇮🇳</Text>
-            <Text style={styles.countryCode}>+91</Text>
-          </View>
-          <View style={styles.separator} />
           <TextInput
             style={[
               styles.phoneInput,

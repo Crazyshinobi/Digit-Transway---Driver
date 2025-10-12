@@ -1,4 +1,4 @@
-import React, { useCallback , useMemo} from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import ModernInput from '../common/ModernInput';
 import RadioButton from '../common/RadioButton';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { THEME } from '../../themes/colors';
-
 
 const PersonalInfoStep = ({
   formData,
@@ -39,6 +38,7 @@ const PersonalInfoStep = ({
     [setFormData, clearFieldError],
   );
 
+  // Password change handler
   const handlePasswordChange = useCallback(
     text => {
       setFormData(prev => ({ ...prev, password: text }));
@@ -103,7 +103,6 @@ const PersonalInfoStep = ({
           value={formData.name}
           onChangeText={handleNameChange}
           error={errors.name}
-          icon="👤"
           autoCapitalize="words"
         />
 
@@ -112,18 +111,17 @@ const PersonalInfoStep = ({
           value={formData.email}
           onChangeText={handleEmailChange}
           error={errors.email}
-          icon="✉️"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
         />
 
+        {/* Password field */}
         <ModernInput
           placeholder="Create Password"
           value={formData.password}
           onChangeText={handlePasswordChange}
           error={errors.password}
-          icon="🔒"
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -134,7 +132,6 @@ const PersonalInfoStep = ({
           onPress={handleDatePickerOpen}
           activeOpacity={0.7}
         >
-          <Text style={styles.inputIcon}>📅</Text>
           <Text
             style={[
               styles.dateText,
@@ -174,10 +171,11 @@ const PersonalInfoStep = ({
           value={formData.emergency_contact}
           onChangeText={handleEmergencyContactChange}
           error={errors.emergency_contact}
-          icon="📞"
           keyboardType="phone-pad"
           maxLength={10}
         />
+        
+        <View style={styles.bottomSpacer} />
       </View>
 
       {showDatePicker && (
@@ -197,6 +195,7 @@ const PersonalInfoStep = ({
 const styles = StyleSheet.create({
   stepContainer: {
     flex: 1,
+    minHeight: 650, // Increased for additional field
   },
   stepHeader: {
     alignItems: 'center',
@@ -241,12 +240,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     shadowColor: THEME.shadowLight,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 8},
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 10,
     borderWidth: 1,
     borderColor: THEME.borderLight,
+    marginBottom: 20,
   },
   datePickerButton: {
     flexDirection: 'row',
@@ -258,12 +258,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 20,
-  },
-  inputIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    width: 24,
-    textAlign: 'center',
   },
   dateText: {
     flex: 1,
@@ -277,7 +271,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   genderContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionLabel: {
     fontSize: 16,
@@ -289,6 +283,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     flexWrap: 'wrap',
+    marginBottom: 8,
   },
   inputError: {
     borderColor: THEME.error,
@@ -301,6 +296,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingLeft: 8,
     textAlign: 'center',
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });
 

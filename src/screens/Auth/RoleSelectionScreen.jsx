@@ -10,24 +10,47 @@ import {
   Platform,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
+import { THEME } from '../../themes/colors';
+import { API_URL } from '../../config/config';
+import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
 
-// Your theme colors
-const themeColor = '#4285f4';
-const backgroundColor = '#f8f9fa';
-const textDark = '#1a1a1a';
-const textGray = '#666';
-
 const RoleSelectionScreen = ({ navigation }) => {
   const [selectedRole, setSelectedRole] = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const backgroundAnim = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.9)).current;
   const headerSlide = useRef(new Animated.Value(-50)).current;
 
+  const fetchRoles = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await axios.get(`${API_URL}/api/user-types`);
+      console.log('Full API Response:', data);
+      if (data?.success) {
+        const rolesArray = data.data.user_types;
+        console.log('Extracted Roles Array:', rolesArray);
+        setRoles(rolesArray || []);
+      } else {
+        console.error(
+          'Failed to fetch roles:',
+          data?.message || 'Unknown error',
+        );
+      }
+    } catch (error) {
+      console.error('Error in fetching roles:', error.message || error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
+    fetchRoles();
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -53,10 +76,9 @@ const RoleSelectionScreen = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const handleRoleSelect = (role) => {
+  const handleRoleSelect = role => {
     setSelectedRole(role);
-    
-    // Animated feedback
+
     Animated.sequence([
       Animated.timing(cardScale, {
         toValue: 0.98,
@@ -72,27 +94,35 @@ const RoleSelectionScreen = ({ navigation }) => {
     ]).start();
 
     setTimeout(() => {
-      navigation?.navigate('Register', { role });
+      navigation?.navigate('Register', { user_type_key: role.type_key });
     }, 500);
   };
 
   const animatedBackgroundColor = backgroundAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#e8f0fe', backgroundColor],
+    outputRange: [THEME.primarySurface, THEME.surface],
   });
 
+  const renderLoader = () => (
+    <View style={styles.loaderContainer}>
+      <ActivityIndicator size="large" color={THEME.primary} />
+      <Text style={styles.loaderText}>Finding Your Path...</Text>
+    </View>
+  );
+
   return (
-    <Animated.View style={[styles.container, { backgroundColor: animatedBackgroundColor }]}>
-      <StatusBar barStyle="light-content" backgroundColor={themeColor} />
-      
-      {/* Fixed Header */}
-      <Animated.View 
+    <Animated.View
+      style={[styles.container, { backgroundColor: animatedBackgroundColor }]}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.surface} />
+
+      <Animated.View
         style={[
           styles.header,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: headerSlide }]
-          }
+            transform: [{ translateY: headerSlide }],
+          },
         ]}
       >
         <View style={styles.headerContent}>
@@ -102,151 +132,75 @@ const RoleSelectionScreen = ({ navigation }) => {
             Choose your path and let's get you set up perfectly
           </Text>
         </View>
-        
-        {/* Floating orbs - repositioned */}
+
         <View style={styles.orbContainer}>
           <View style={[styles.orb, styles.orb1]} />
           <View style={[styles.orb, styles.orb2]} />
           <View style={[styles.orb, styles.orb3]} />
         </View>
       </Animated.View>
-
-      {/* Scrollable Content - Fixed overflow issues */}
-      <ScrollView 
-        style={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <Animated.View 
-          style={[
-            styles.cardsContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: cardScale }]
-            }
-          ]}
+      
+      {isLoading ? renderLoader() : (
+        <ScrollView
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          {/* Fleet Owner Card - Fixed content visibility */}
-          <TouchableOpacity 
+          <Animated.View
             style={[
-              styles.roleCard,
-              styles.ownerCard,
-              selectedRole === 'owner' && styles.selectedCard
+              styles.cardsContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: cardScale }],
+              },
             ]}
-            onPress={() => handleRoleSelect('owner')}
-            activeOpacity={0.9}
           >
-            <View style={styles.cardGradient}>
-              <View style={styles.cardHeader}>
-                <View style={styles.iconWrapper}>
-                  <Text style={styles.cardIcon}>🏢</Text>
-                  <View style={styles.iconGlow} />
+          {roles && roles.map(role => (
+            <TouchableOpacity
+              key={role.id}
+              style={[
+                styles.roleCard,
+                selectedRole?.id === role.id && styles.selectedCard,
+              ]}
+              onPress={() => handleRoleSelect(role)}
+              activeOpacity={0.9}
+            >
+              <View style={styles.cardGradient}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.iconWrapper}>
+                    <Text style={styles.cardIcon}>{role.icon}</Text>
+                    <View style={styles.iconGlow} />
+                  </View>
+                  {selectedRole?.id === role.id && (
+                    <View style={styles.selectedBadge}>
+                      <Text style={styles.selectedBadgeText}>✓</Text>
+                    </View>
+                  )}
                 </View>
-                {selectedRole === 'owner' && (
-                  <View style={styles.selectedBadge}>
-                    <Text style={styles.selectedBadgeText}>✓</Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>Fleet Owner</Text>
-                <Text style={styles.cardSubtitle}>Business & Operations</Text>
-                <Text style={styles.cardDescription}>
-                  Manage your fleet, track performance, optimize routes, and grow your business with powerful analytics tools.
-                </Text>
-                
-                <View style={styles.featuresList}>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Comprehensive Fleet Management</Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Real-time Driver Analytics</Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Advanced Revenue Tracking</Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Route Optimization Engine</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
 
-          {/* Driver Card - Fixed content visibility */}
-          <TouchableOpacity 
-            style={[
-              styles.roleCard,
-              styles.driverCard,
-              selectedRole === 'driver' && styles.selectedCard
-            ]}
-            onPress={() => handleRoleSelect('driver')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.cardGradient}>
-              <View style={styles.cardHeader}>
-                <View style={styles.iconWrapper}>
-                  <Text style={styles.cardIcon}>👨‍💼</Text>
-                  <View style={styles.iconGlow} />
-                </View>
-                {selectedRole === 'driver' && (
-                  <View style={styles.selectedBadge}>
-                    <Text style={styles.selectedBadgeText}>✓</Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>Professional Driver</Text>
-                <Text style={styles.cardSubtitle}>On the Road</Text>
-                <Text style={styles.cardDescription}>
-                  Get assignments, navigate efficiently, track earnings, and build your driving career with our comprehensive tools.
-                </Text>
-                
-                <View style={styles.featuresList}>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Smart Navigation System</Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Live Earnings Tracker</Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Detailed Trip History</Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <View style={styles.featureDot} />
-                    <Text style={styles.featureText}>Performance Insights</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
+                <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle}>{role.title}</Text>
+                    <Text style={styles.cardSubtitle}>{role.subtitle}</Text>
+                    <Text style={styles.cardDescription}>
+                      {role.description}
+                    </Text>
 
-        {/* Bottom Section - Better positioned */}
-        <Animated.View 
-          style={[
-            styles.bottomSection,
-            { opacity: fadeAnim }
-          ]}
-        >
-          <View style={styles.infoCard}>
-            <Text style={styles.infoIcon}>💡</Text>
-            <Text style={styles.infoText}>
-              Don't worry! You can always switch roles later in your profile settings
-            </Text>
-          </View>
-        </Animated.View>
-      </ScrollView>
+                    <View style={styles.featuresList}>
+                      {role.features.map((feature, index) => (
+                        <View key={index} style={styles.featureItem}>
+                          <View style={styles.featureDot} />
+                          <Text style={styles.featureText}>{feature}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        </ScrollView>
+      )}
     </Animated.View>
   );
 };
@@ -255,8 +209,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  
-  // Fixed Header Styles
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 50, 
+  },
+  loaderText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: THEME.textSecondary,
+    fontWeight: '500',
+  },
   header: {
     paddingTop: Platform.OS === 'ios' ? 50 : 30,
     paddingHorizontal: 24,
@@ -271,7 +235,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 14,
-    color: textDark,
+    color: THEME.textPrimary,
     fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.3,
@@ -280,21 +244,19 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 25,
     fontWeight: '800',
-    color: themeColor,
+    color: THEME.primary,
     marginBottom: 8,
     textAlign: 'center',
     letterSpacing: -0.8,
   },
   subtitleText: {
     fontSize: 16,
-    color: textGray,
+    color: THEME.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     fontWeight: '400',
     paddingHorizontal: 20,
   },
-  
-  // Repositioned floating orbs
   orbContainer: {
     position: 'absolute',
     top: 0,
@@ -306,31 +268,29 @@ const styles = StyleSheet.create({
   orb: {
     position: 'absolute',
     borderRadius: 100,
-    opacity: 0.06,
+    opacity: 0.08,
   },
   orb1: {
     width: 100,
     height: 100,
-    backgroundColor: themeColor,
+    backgroundColor: THEME.primary,
     top: 10,
     right: -30,
   },
   orb2: {
     width: 60,
     height: 60,
-    backgroundColor: '#34a853',
+    backgroundColor: THEME.secondary,
     bottom: 5,
     left: -15,
   },
   orb3: {
     width: 40,
     height: 40,
-    backgroundColor: themeColor,
+    backgroundColor: THEME.primary,
     top: 80,
     left: 40,
   },
-
-  // Fixed scroll container
   scrollContainer: {
     flex: 1,
   },
@@ -339,47 +299,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 30,
   },
-
-  // Cards Container - Better flex distribution
   cardsContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingVertical: 20,
   },
-  
-  // Fixed Card Styles - No overflow issues
   roleCard: {
     borderRadius: 24,
-    shadowColor: '#000',
+    shadowColor: THEME.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 8,
     overflow: 'hidden',
     marginBottom: 20,
-    backgroundColor: '#fff',
-    // Removed fixed minHeight to allow content to determine height
-  },
-  ownerCard: {
+    backgroundColor: THEME.background,
     borderWidth: 1,
-    borderColor: '#f0f2f5',
-  },
-  driverCard: {
-    borderWidth: 1,
-    borderColor: '#f0f2f5',
+    borderColor: THEME.border,
   },
   selectedCard: {
     transform: [{ scale: 1.02 }],
     shadowOpacity: 0.15,
-    shadowColor: themeColor,
+    shadowColor: THEME.primary,
     borderWidth: 2,
-    borderColor: themeColor,
+    borderColor: THEME.primary,
   },
-  
-  // Fixed card content layout
   cardGradient: {
     padding: 24,
-    flex: 1, // Allow content to expand properly
+    flex: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -401,43 +348,41 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: `${themeColor}06`,
+    backgroundColor: `${THEME.primary}0D`,
     zIndex: -1,
   },
   selectedBadge: {
-    backgroundColor: '#10b981',
+    backgroundColor: THEME.success,
     width: 30,
     height: 30,
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#10b981',
+    shadowColor: THEME.success,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
   selectedBadgeText: {
-    color: '#fff',
+    color: THEME.textOnPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
-  
-  // Fixed card content - Better text visibility
   cardContent: {
     flex: 1,
-    flexShrink: 1, // Allow content to shrink if needed
+    flexShrink: 1,
   },
   cardTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: textDark,
+    color: THEME.textPrimary,
     marginBottom: 4,
     letterSpacing: -0.5,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: themeColor,
+    color: THEME.primary,
     fontWeight: '600',
     marginBottom: 12,
     textTransform: 'uppercase',
@@ -445,17 +390,15 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     fontSize: 14,
-    color: textGray,
+    color: THEME.textSecondary,
     lineHeight: 22,
     marginBottom: 20,
     fontWeight: '400',
-    flexShrink: 1, // Prevent overflow
+    flexShrink: 1,
   },
-  
-  // Enhanced features list
   featuresList: {
     gap: 10,
-    flexShrink: 1, // Allow features to shrink if needed
+    flexShrink: 1,
   },
   featureItem: {
     flexDirection: 'row',
@@ -467,38 +410,36 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: themeColor,
-    marginTop: 7, // Align with text
-    flexShrink: 0, // Don't shrink dot
+    backgroundColor: THEME.primary,
+    marginTop: 7,
+    flexShrink: 0,
   },
   featureText: {
     fontSize: 12,
-    color: textGray,
+    color: THEME.textSecondary,
     fontWeight: '500',
     lineHeight: 20,
     flex: 1,
-    flexShrink: 1, // Allow text to wrap
+    flexShrink: 1,
   },
-
-  // Fixed Bottom Section
   bottomSection: {
     paddingTop: 20,
     paddingHorizontal: 4,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: THEME.background,
     borderRadius: 16,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 16,
-    shadowColor: '#000',
+    shadowColor: THEME.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#f0f2f5',
+    borderColor: THEME.border,
   },
   infoIcon: {
     fontSize: 20,
@@ -507,10 +448,10 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: themeColor,
+    color: THEME.primary,
     lineHeight: 20,
     fontWeight: '500',
-    flexShrink: 1, // Allow text to wrap properly
+    flexShrink: 1,
   },
 });
 

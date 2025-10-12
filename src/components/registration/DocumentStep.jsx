@@ -56,7 +56,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
             clearFieldError('aadhar_number');
           }}
           error={errors.aadhar_number}
-          icon="🆔"
+          // icon="🆔"
           keyboardType="numeric"
           maxLength={12}
         />
@@ -69,7 +69,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
             clearFieldError('pan_number');
           }}
           error={errors.pan_number}
-          icon="💳"
+          // icon="💳"
           autoCapitalize="characters"
           maxLength={10}
         />
@@ -82,7 +82,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
             clearFieldError('rc_number');
           }}
           error={errors.rc_number}
-          icon="📋"
+          // icon="📋"
         />
 
         <TouchableOpacity
@@ -133,7 +133,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
             clearFieldError('full_address');
           }}
           error={errors.full_address}
-          icon="🏠"
+          // icon="🏠"
           multiline
           numberOfLines={3}
         />
@@ -148,7 +148,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
                 clearFieldError('state');
               }}
               error={errors.state}
-              icon="🗺️"
+              // icon="🗺️"
             />
           </View>
           <View style={styles.halfWidth}>
@@ -160,7 +160,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
                 clearFieldError('city');
               }}
               error={errors.city}
-              icon="🏙️"
+              // icon="🏙️"
             />
           </View>
         </View>
@@ -175,7 +175,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
                 clearFieldError('pincode');
               }}
               error={errors.pincode}
-              icon="📍"
+              // icon="📍"
               keyboardType="numeric"
               maxLength={6}
             />
@@ -184,7 +184,7 @@ const DocumentStep = ({ formData, setFormData, errors, clearFieldError }) => {
             <ModernInput
               placeholder="Country"
               value={formData.country}
-              icon="🌍"
+              // icon="🌍"
               editable={false}
             />
           </View>

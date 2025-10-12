@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,14 @@ import {
   StatusBar,
   StyleSheet,
   SafeAreaView,
+  Switch,
+  Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { THEME } from '../../themes/colors';
+import { API_URL } from '../../config/config';
+import axios from 'axios';
 
 const Icon = ({ name, size, style }) => {
   const getIcon = () => {
@@ -31,8 +38,61 @@ const mockTrips = [
   { id: '5', from: 'South Delhi', to: 'Sonipat', distance: '60 km', vehicle: 'Large Truck', payout: 'Quote Now' },
 ];
 
-const AvailableTripScreen = ({ navigation }) => {
+const AvailableTripScreen = ({ navigation, route }) => {
   const [trips] = useState(mockTrips);
+  const [isAutoSearch, setIsAutoSearch] = useState(false);
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accessToken, setAccessToken] = useState(null);
+
+  useEffect(() => {
+    const token = route.params?.accessToken;
+    if (token) {
+      setAccessToken(token);
+    } else {
+      Alert.alert("Authentication Error", "Your session is invalid. Please log in again.");
+      navigation.navigate('Login');
+    }
+  }, [route.params]);
+
+  const handleToggleAutoSearch = () => {
+    if (!isAutoSearch) {
+      setModalVisible(true);
+    } else {
+      setIsAutoSearch(false);
+      Alert.alert("Auto-Search Stopped", "You will no longer be automatically matched with trips.");
+      // You could also call an API to stop the auto-search on the backend here.
+    }
+  };
+  
+  const startAutoSearch = async () => {
+    if (!accessToken) {
+        Alert.alert("Authentication Error", "Cannot start auto-search without a valid session.");
+        return;
+    }
+    setModalVisible(false);
+    setIsSubmitting(true);
+    
+    try {
+        console.log("Starting auto-search...");
+        
+        // This is a fire-and-forget API, we don't need to handle the response content
+        await axios.post(`${API_URL}/api/truck-booking/create-auto-search`, {}, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        setIsAutoSearch(true);
+        Alert.alert(
+            "Auto-Search Activated!",
+            "We will now automatically search for trips that match your profile and notify you."
+        );
+    } catch (error) {
+        console.error("Failed to start auto-search:", error.response?.data || error.message);
+        Alert.alert("Error", "Could not start auto-search. Please try again.");
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
 
   const renderTripItem = ({ item }) => (
     <TouchableOpacity 
@@ -68,10 +128,44 @@ const AvailableTripScreen = ({ navigation }) => {
           <Icon name="back" size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Available Trips</Text>
-        <TouchableOpacity style={styles.filterButton}>
-          <Icon name="filter" size={22} style={styles.filterIcon} />
-        </TouchableOpacity>
+        <View style={styles.autoSearchContainer}>
+            <Text style={styles.autoSearchLabel}>Auto-Search</Text>
+            <Switch
+                value={isAutoSearch}
+                onValueChange={handleToggleAutoSearch}
+                trackColor={{ false: THEME.border, true: THEME.primaryLight }}
+                thumbColor={isAutoSearch ? THEME.primary : THEME.surface}
+            />
+        </View>
       </View>
+
+      <Modal
+        transparent={true}
+        visible={isModalVisible}
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Start Auto-Search?</Text>
+                <Text style={styles.modalSubtitle}>
+                    This will automatically find and notify you about new trips matching your vehicle and preferred routes.
+                </Text>
+                {isSubmitting ? (
+                    <ActivityIndicator style={{marginTop: 20}} color={THEME.primary} size="large" />
+                ) : (
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.modalButton} onPress={() => setModalVisible(false)}>
+                            <Text style={styles.modalButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.modalButton, styles.modalButtonPrimary]} onPress={startAutoSearch}>
+                            <Text style={[styles.modalButtonText, styles.modalButtonPrimaryText]}>Start Searching</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        </View>
+      </Modal>
 
       <FlatList
         data={trips}
@@ -106,12 +200,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: '#111827',
-  },
-  filterButton: {
-    padding: 8,
-  },
-  filterIcon: {
-    color: '#4b5563',
   },
   listContent: {
     padding: 20,
@@ -180,16 +268,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
   },
   quoteText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  autoSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  autoSearchLabel: {
+    marginRight: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: THEME.background,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: THEME.textPrimary,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: THEME.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: THEME.surface,
+    marginHorizontal: 8,
+  },
+  modalButtonPrimary: {
+    backgroundColor: THEME.primary,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME.textPrimary,
+  },
+  modalButtonPrimaryText: {
+    color: THEME.textOnPrimary,
   },
 });
 
