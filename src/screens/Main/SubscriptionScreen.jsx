@@ -11,12 +11,14 @@ import {
   Platform,
   StatusBar,
   ActivityIndicator,
-  SafeAreaView,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import { THEME } from '../../themes/colors';
 import { API_URL } from '../../config/config';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,6 +35,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
   const [plans, setPlans] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
+  const [paymentWebViewUrl, setPaymentWebViewUrl] = useState(null);
 
   const userRole = route.params?.userRole || 'driver';
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -65,19 +68,28 @@ const SubscriptionScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    const token = route.params?.accessToken;
-    if (token) {
-      setAccessToken(token);
-    } else {
-      console.error('Authentication Error: No access token provided.');
-      Alert.alert(
-        'Authentication Error',
-        'Your session is invalid. Please log in again.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
-      );
-    }
+    const fetchData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('@user_token');
+        if (token) {
+          setAccessToken(token);
+        } else {
+          console.error('Authentication Error: No access token provided.');
+          Alert.alert(
+            'Authentication Error',
+            'Your session is invalid. Please log in again.',
+            [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+          );
+        }
 
-    fetchPlans();
+        await fetchPlans();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    fetchData();
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -107,9 +119,11 @@ const SubscriptionScreen = ({ navigation, route }) => {
     setSelectedPlanId(planId);
   };
 
-  // --- MODIFIED: Bypassed payment and now navigates directly to Dashboard ---
-  const subscribeToPlan = async () => {
-    if (!selectedPlanId) {
+  // FIXED: Now accepts planId parameter
+  const subscribeToPlan = async planId => {
+    const planToSubscribe = planId || selectedPlanId;
+
+    if (!planToSubscribe) {
       Alert.alert(
         'No Plan Selected',
         'Please choose a subscription plan to continue.',
@@ -125,10 +139,64 @@ const SubscriptionScreen = ({ navigation, route }) => {
     }
 
     console.log(
-      `Bypassing payment for plan ID: ${selectedPlanId}. Navigating to Dashboard.`,
+      `Subscribing to plan ID: ${planToSubscribe} with token: ${accessToken}`,
     );
-    // Pass the access token to the Dashboard to maintain the session
-    navigation.navigate('ListVehicle', { accessToken: accessToken });
+    setIsSubscribing(true);
+    setSelectedPlanId(planToSubscribe); // Update selected plan
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/vendor-plans/subscribe`,
+        { vendor_plan_id: planToSubscribe },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
+      if (response.data.success) {
+        const paymentUrl = response.data.data?.payment_url;
+
+        if (paymentUrl) {
+          console.log('Payment URL found, opening WebView:', paymentUrl);
+          setPaymentWebViewUrl(paymentUrl);
+        } else {
+          console.log('Subscription successful, no payment URL.');
+          Alert.alert(
+            'Subscription Successful!',
+            'Your plan has been updated.',
+          );
+          navigation.navigate('ListVehicle', { accessToken: accessToken });
+        }
+      } else {
+        throw new Error(response.data.message || 'Subscription failed.');
+      }
+    } catch (err) {
+      console.error('[Subscription Error]', err);
+      const msg =
+        err.response?.data?.message || err.message || 'An error occurred.';
+      Alert.alert('Subscription Error', msg);
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleWebViewNavigation = navState => {
+    const { url } = navState;
+    console.log('WebView URL Changed:', url);
+
+    // Update these URLs to match your backend's redirect URLs
+    if (url.includes('/payment-success')) {
+      setPaymentWebViewUrl(null);
+      Alert.alert(
+        'Payment Successful!',
+        'Your subscription is active. Redirecting...',
+      );
+      navigation.navigate('ListVehicle', { accessToken: accessToken });
+    } else if (url.includes('/payment-failed')) {
+      setPaymentWebViewUrl(null);
+      Alert.alert(
+        'Payment Failed',
+        'Your payment was not successful. Please try again.',
+      );
+    }
   };
 
   const PlanCard = ({ plan, index }) => {
@@ -200,6 +268,8 @@ const SubscriptionScreen = ({ navigation, route }) => {
                 </View>
               ))}
             </View>
+
+            {/* FIXED: Button now passes plan.id to subscribeToPlan */}
             <TouchableOpacity
               style={[
                 styles.choosePlanButton,
@@ -209,21 +279,31 @@ const SubscriptionScreen = ({ navigation, route }) => {
                     : THEME.surface,
                   borderColor: plan.button_color,
                 },
+                isSubscribing && styles.disabledButton,
               ]}
-              onPress={subscribeToPlan}
+              onPress={() => subscribeToPlan(plan.id)}
               activeOpacity={0.8}
+              disabled={isSubscribing}
             >
-              <Text
-                style={[
-                  styles.choosePlanButtonText,
-                  {
-                    color: isSelected ? THEME.textOnPrimary : plan.button_color,
-                  },
-                ]}
-              >
-                {isSelected ? 'Continue to Dashboard' : plan.button_text}
-                {isSelected && <Text style={styles.arrowIcon}> →</Text>}
-              </Text>
+              {isSubscribing && selectedPlanId === plan.id ? (
+                <ActivityIndicator
+                  color={isSelected ? THEME.textOnPrimary : plan.button_color}
+                />
+              ) : (
+                <Text
+                  style={[
+                    styles.choosePlanButtonText,
+                    {
+                      color: isSelected
+                        ? THEME.textOnPrimary
+                        : plan.button_color,
+                    },
+                  ]}
+                >
+                  {isSelected ? 'Continue to Dashboard' : plan.button_text}
+                  {isSelected && <Text style={styles.arrowIcon}> →</Text>}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -236,6 +316,38 @@ const SubscriptionScreen = ({ navigation, route }) => {
     outputRange: [THEME.primarySurface, THEME.surface],
   });
 
+  // WebView render logic
+  if (paymentWebViewUrl) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.webviewHeader}>
+          <TouchableOpacity
+            onPress={() => setPaymentWebViewUrl(null)}
+            style={styles.closeButton}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+          <Text style={styles.webviewHeaderText}>Complete Payment</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <WebView
+          source={{ uri: paymentWebViewUrl }}
+          onNavigationStateChange={handleWebViewNavigation}
+          startInLoadingState={true}
+          renderLoading={() => (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={THEME.primary} />
+            </View>
+          )}
+          javaScriptEnabled
+          domStorageEnabled
+          originWhitelist={['*']}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // Original screen render
   return (
     <SafeAreaView style={styles.safeArea}>
       <Animated.View
@@ -277,27 +389,6 @@ const SubscriptionScreen = ({ navigation, route }) => {
                 <PlanCard key={plan.id} plan={plan} index={index} />
               ))}
             </View>
-
-            <Animated.View
-              style={[
-                styles.footerContainer,
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-              ]}
-            >
-              {/* --- MODIFIED: This button also navigates to the Dashboard --- */}
-              <TouchableOpacity
-                style={styles.skipButton}
-                onPress={() =>
-                  navigation.navigate('Dashboard', { accessToken: accessToken })
-                }
-                activeOpacity={0.8}
-              >
-                <Text style={styles.skipButtonText}>
-                  Continue with Free Plan
-                </Text>
-                <Text style={styles.skipSubtext}>You can upgrade anytime</Text>
-              </TouchableOpacity>
-            </Animated.View>
           </ScrollView>
         )}
       </Animated.View>
@@ -317,6 +408,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: THEME.surface,
   },
   loaderText: {
     marginTop: 10,
@@ -394,6 +486,7 @@ const styles = StyleSheet.create({
     left: 40,
   },
   scrollContainer: {
+    paddingTop:40,
     paddingBottom: 40,
   },
   plansContainer: {
@@ -560,6 +653,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.placeholder,
     fontWeight: '400',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  webviewHeader: {
+    height: 60,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: THEME.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.border,
+  },
+  webviewHeaderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.textPrimary,
+  },
+  closeButton: {
+    padding: 8,
+    minWidth: 60,
+    alignItems: 'flex-start',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: THEME.primary,
+    fontWeight: '500',
   },
 });
 

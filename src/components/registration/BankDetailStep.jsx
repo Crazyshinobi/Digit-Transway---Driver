@@ -1,92 +1,212 @@
-// src/components/registration/BankDetailsStep.js
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator, // <-- Import
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient'; // <-- Import
 import ModernInput from '../common/ModernInput';
 import { THEME } from '../../themes/colors';
 
 const BankDetailStep = ({
   formData,
-  setFormData,
+  setFormData, // <-- Still needed for declaration
   errors,
-  clearFieldError,
+  clearFieldError, // --- NEW PROPS ---
+  onBankDetailsChange, // <-- Replaces setFormData for bank fields
+  onVerifyBankAccount,
+  onEditBankDetails,
+  isVerifyingBank,
+  isBankVerified,
 }) => {
+  const canVerify =
+    !isVerifyingBank &&
+    formData.account_number.length > 5 && // Basic check
+    formData.ifsc.length === 11; // Basic check
+
   return (
     <View style={styles.stepContainer}>
+           {' '}
       <View style={styles.stepHeader}>
+               {' '}
         <View style={styles.iconContainer}>
-          <Text style={styles.stepIcon}>🏦</Text>
+                    <Text style={styles.stepIcon}>🏦</Text>       {' '}
         </View>
-        <Text style={styles.stepTitle}>Banking Information</Text>
-        <Text style={styles.stepSubtitle}>Secure payment details for transactions</Text>
+                <Text style={styles.stepTitle}>Banking Information</Text>       {' '}
+        <Text style={styles.stepSubtitle}>
+                    Please verify your bank account to proceed        {' '}
+        </Text>
+             {' '}
       </View>
-
+           {' '}
       <View style={styles.inputCard}>
-        <ModernInput
-          placeholder="Bank Name"
-          value={formData.bank_name}
-          onChangeText={(text) => {
-            setFormData(prev => ({ ...prev, bank_name: text }));
-            clearFieldError('bank_name');
-          }}
-          error={errors.bank_name}
-          // icon="🏦"
-        />
-
-        <ModernInput
-          placeholder="Account Number"
-          value={formData.account_number}
-          onChangeText={(text) => {
-            setFormData(prev => ({ ...prev, account_number: text }));
-            clearFieldError('account_number');
-          }}
-          error={errors.account_number}
-          // icon="🔢"
-          keyboardType="numeric"
-        />
-
-        <ModernInput
-          placeholder="IFSC Code"
-          value={formData.ifsc}
-          onChangeText={(text) => {
-            setFormData(prev => ({ ...prev, ifsc: text.toUpperCase() }));
-            clearFieldError('ifsc');
-          }}
-          error={errors.ifsc}
-          // icon="🏛️"
-          autoCapitalize="characters"
-          maxLength={11}
-        />
-
-        <View style={styles.securityNote}>
-          <Text style={styles.securityIcon}>🔒</Text>
-          <Text style={styles.securityText}>
-            Your banking information is encrypted and secure
-          </Text>
-        </View>
-
-        <View style={styles.declarationCard}>
-          <TouchableOpacity
-            style={styles.checkboxContainer}
-            onPress={() => {
-              setFormData(prev => ({ ...prev, declaration: !prev.declaration }));
-              clearFieldError('declaration');
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.modernCheckbox, formData.declaration && styles.checkedCheckbox]}>
-              {formData.declaration && <Text style={styles.checkIcon}>✓</Text>}
+               {' '}
+        {isBankVerified ? (
+          // --- VERIFIED STATE ---
+          <View style={styles.verifiedContainer}>
+                       {' '}
+            <View style={styles.verifiedHeader}>
+                            <Text style={styles.verifiedIcon}>✅</Text>         
+                  <Text style={styles.verifiedTitle}>Account Verified</Text>   
+                       {' '}
+              <TouchableOpacity
+                onPress={onEditBankDetails}
+                style={styles.editButton}
+              >
+                                <Text style={styles.editButtonText}>Edit</Text> 
+                           {' '}
+              </TouchableOpacity>
+                         {' '}
             </View>
-            <Text style={styles.declarationText}>
-              I declare that all information provided is accurate and I agree to the terms and conditions.
-            </Text>
-          </TouchableOpacity>
-          {errors.declaration && <Text style={styles.errorText}>{errors.declaration}</Text>}
+                       {' '}
+            <View style={styles.verifiedRow}>
+                           {' '}
+              <Text style={styles.verifiedLabel}>Account Holder:</Text>         
+                 {' '}
+              <Text style={styles.verifiedValue}>
+                                {formData.account_holder_name}             {' '}
+              </Text>
+                         {' '}
+            </View>
+                       {' '}
+            <View style={styles.verifiedRow}>
+                            <Text style={styles.verifiedLabel}>Bank Name:</Text>
+                           {' '}
+              <Text style={styles.verifiedValue}>{formData.bank_name}</Text>   
+                     {' '}
+            </View>
+                       {' '}
+            <View style={styles.verifiedRow}>
+                           {' '}
+              <Text style={styles.verifiedLabel}>Account Number:</Text>  S      
+                   {' '}
+              <Text style={styles.verifiedValue}>
+                                ...{formData.account_number.slice(-4)}         
+                   {' '}
+              </Text>
+                         {' '}
+            </View>
+                     {' '}
+          </View>
+        ) : (
+          // --- UNVERIFIED STATE ---
+          <>
+                       {' '}
+            <ModernInput
+              placeholder="Account Number"
+              value={formData.account_number}
+              onChangeText={text =>
+                onBankDetailsChange('account_number', text.replace(/\D/g, ''))
+              }
+              error={errors.account_number}
+              keyboardType="numeric"
+            />
+                       {' '}
+            <ModernInput
+              placeholder="IFSC Code"
+              value={formData.ifsc}
+              onChangeText={text =>
+                onBankDetailsChange('ifsc', text.toUpperCase())
+              }
+              error={errors.ifsc}
+              autoCapitalize="characters"
+              maxLength={11}
+            />
+                       {' '}
+            <TouchableOpacity
+              onPress={onVerifyBankAccount}
+              disabled={!canVerify}
+              style={styles.verifyButtonContainer}
+            >
+                           {' '}
+              <LinearGradient
+                colors={
+                  !canVerify
+                    ? ['#BDBDBD', '#BDBDBD']
+                    : [THEME.primary, THEME.primaryDark]
+                }
+                style={styles.verifyButton}
+              >
+                               {' '}
+                {isVerifyingBank ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.verifyButtonText}>Verify Account</Text>
+                )}
+                             {' '}
+              </LinearGradient>
+                         {' '}
+            </TouchableOpacity>
+                        {/* General Bank Error Message */}           {' '}
+            {errors.bank_account && (
+              <Text style={styles.generalErrorText}>{errors.bank_account}</Text>
+            )}
+                     {' '}
+          </>
+        )}
+               {' '}
+        <View style={styles.securityNote}>
+                    <Text style={styles.securityIcon}>🔒</Text>         {' '}
+          <Text style={styles.securityText}>
+                        Your banking information is encrypted and secure        
+             {' '}
+          </Text>
+                 {' '}
         </View>
+               {' '}
+        {/* Declaration remains unchanged, but is only shown if verified */}   
+           {' '}
+        {isBankVerified && (
+          <View style={styles.declarationCard}>
+                       {' '}
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  declaration: !prev.declaration,
+                }));
+                clearFieldError('declaration');
+              }}
+              activeOpacity={0.7}
+            >
+                           {' '}
+              <View
+                style={[
+                  styles.modernCheckbox,
+                  formData.declaration && styles.checkedCheckbox,
+                ]}
+              >
+                               {' '}
+                {formData.declaration && (
+                  <Text style={styles.checkIcon}>✓</Text>
+                )}
+                             {' '}
+              </View>
+                           {' '}
+              <Text style={styles.declarationText}>
+                                I declare that all information provided is
+                accurate and I agree to the terms and conditions.              {' '}
+              </Text>
+                         {' '}
+            </TouchableOpacity>
+                       {' '}
+            {errors.declaration && (
+              <Text style={styles.errorText}>{errors.declaration}</Text>
+            )}
+                     {' '}
+          </View>
+        )}
+             {' '}
       </View>
+         {' '}
     </View>
   );
 };
 
+// --- ADD NEW STYLES ---
 const styles = StyleSheet.create({
   stepContainer: {
     flex: 1,
@@ -172,7 +292,7 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 16, // Reduced margin
   },
   modernCheckbox: {
     width: 24,
@@ -206,6 +326,86 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingLeft: 8,
     textAlign: 'center',
+  },
+  generalErrorText: {
+    color: THEME.error,
+    fontSize: 13,
+    marginTop: 12,
+    textAlign: 'center',
+    fontWeight: '500',
+  }, // --- NEW VERIFY BUTTON STYLES ---
+  verifyButtonContainer: {
+    marginTop: 16,
+  },
+  verifyButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: THEME.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  verifyButtonText: {
+    color: THEME.textOnPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  }, // --- NEW VERIFIED STATE STYLES ---
+  verifiedContainer: {
+    backgroundColor: THEME.successSurface,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: THEME.success,
+  },
+  verifiedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.successBorder,
+    paddingBottom: 12,
+    marginBottom: 12,
+  },
+  verifiedIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  verifiedTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.success,
+  },
+  editButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  editButtonText: {
+    fontSize: 14,
+    color: THEME.primary,
+    fontWeight: '600',
+  },
+  verifiedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  verifiedLabel: {
+    fontSize: 14,
+    color: THEME.textSecondary,
+    fontWeight: '500',
+  },
+  verifiedValue: {
+    fontSize: 14,
+    color: THEME.textPrimary,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 10,
   },
 });
 

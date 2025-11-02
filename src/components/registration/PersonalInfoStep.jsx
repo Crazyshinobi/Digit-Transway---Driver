@@ -21,7 +21,7 @@ const PersonalInfoStep = ({
   formatDate,
   onDateChange,
 }) => {
-
+  // --- MODIFIED: Re-enabled name change ---
   const handleNameChange = useCallback(
     text => {
       setFormData(prev => ({ ...prev, name: text }));
@@ -38,14 +38,8 @@ const PersonalInfoStep = ({
     [setFormData, clearFieldError],
   );
 
-  // Password change handler
-  const handlePasswordChange = useCallback(
-    text => {
-      setFormData(prev => ({ ...prev, password: text }));
-      clearFieldError('password');
-    },
-    [setFormData, clearFieldError],
-  );
+  // --- Password field is already commented out ---
+  // const handlePasswordChange = useCallback( ... );
 
   const handleEmergencyContactChange = useCallback(
     text => {
@@ -55,6 +49,16 @@ const PersonalInfoStep = ({
     [setFormData, clearFieldError],
   );
 
+  // --- NEW: Added handler for Aadhaar number ---
+  const handleAadhaarChange = useCallback(
+    text => {
+      setFormData(prev => ({ ...prev, aadhar_number: text }));
+      clearFieldError('aadhar_number');
+    },
+    [setFormData, clearFieldError],
+  );
+
+  // --- MODIFIED: Always allow date picker to open ---
   const handleDatePickerOpen = useCallback(() => {
     setShowDatePicker(true);
   }, [setShowDatePicker]);
@@ -67,7 +71,6 @@ const PersonalInfoStep = ({
     [setFormData, clearFieldError],
   );
 
-  // Memoize gender handlers specifically
   const handleMaleSelect = useCallback(
     () => handleGenderSelect('male'),
     [handleGenderSelect],
@@ -81,11 +84,15 @@ const PersonalInfoStep = ({
     [handleGenderSelect],
   );
 
-  // Memoize the formatted date to prevent unnecessary re-renders
   const formattedDate = useMemo(
     () => formatDate(formData.dob),
     [formatDate, formData.dob],
   );
+
+  // --- REMOVED: Check for auto-filled fields is no longer needed ---
+  // const isNameAutofilled = !!formData.name;
+  // const isDobAutofilled = !!formData.dob;
+  // const isAadhaarAutofilled = !!formData.aadhar_number;
 
   return (
     <View style={styles.stepContainer}>
@@ -94,16 +101,36 @@ const PersonalInfoStep = ({
           <Text style={styles.stepIcon}>👤</Text>
         </View>
         <Text style={styles.stepTitle}>Personal Information</Text>
-        <Text style={styles.stepSubtitle}>Help us get to know you better</Text>
+        <Text style={styles.stepSubtitle}>
+          Please fill in or confirm your details
+        </Text>
       </View>
 
       <View style={styles.inputCard}>
+        {/* --- MODIFIED: Full Name (Editable) --- */}
         <ModernInput
-          placeholder="Full Name"
+          placeholder="Full Name (from Aadhaar)"
           value={formData.name}
-          onChangeText={handleNameChange}
+          onChangeText={handleNameChange} // <-- Added
           error={errors.name}
           autoCapitalize="words"
+          // editable={!isNameAutofilled} // <-- Removed
+          // containerStyle={ // <-- Removed
+          //   isNameAutofilled ? styles.disabledInputBackground : null
+          // }
+        />
+
+        {/* --- MODIFIED: Aadhaar Number (Editable) --- */}
+        <ModernInput
+          placeholder="Aadhaar Number (from Aadhaar)"
+          value={formData.aadhar_number}
+          onChangeText={handleAadhaarChange} // <-- Added
+          error={errors.aadhar_number}
+          keyboardType="numeric"
+          // editable={!isAadhaarAutofilled} // <-- Removed
+          // containerStyle={ // <-- Removed
+          //   isAadhaarAutofilled ? styles.disabledInputBackground : null
+          // }
         />
 
         <ModernInput
@@ -116,21 +143,18 @@ const PersonalInfoStep = ({
           autoCorrect={false}
         />
 
-        {/* Password field */}
-        <ModernInput
-          placeholder="Create Password"
-          value={formData.password}
-          onChangeText={handlePasswordChange}
-          error={errors.password}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        {/* --- Password field is already commented out --- */}
 
+        {/* --- MODIFIED: Date of Birth (Editable) --- */}
         <TouchableOpacity
-          style={[styles.datePickerButton, errors.dob && styles.inputError]}
+          style={[
+            styles.datePickerButton,
+            errors.dob && styles.inputError,
+            // isDobAutofilled && styles.disabledInputBackground, // <-- Removed
+          ]}
           onPress={handleDatePickerOpen}
-          activeOpacity={0.7}
+          // activeOpacity={isDobAutofilled ? 1 : 0.7} // <-- Removed
+          // disabled={isDobAutofilled} // <-- Removed
         >
           <Text
             style={[
@@ -141,6 +165,7 @@ const PersonalInfoStep = ({
             {formattedDate}
           </Text>
           <Text style={styles.chevronIcon}>›</Text>
+          {/* {!isDobAutofilled && <Text style={styles.chevronIcon}>›</Text>} <-- Removed */}
         </TouchableOpacity>
         {errors.dob && <Text style={styles.errorText}>{errors.dob}</Text>}
 
@@ -174,7 +199,7 @@ const PersonalInfoStep = ({
           keyboardType="phone-pad"
           maxLength={10}
         />
-        
+
         <View style={styles.bottomSpacer} />
       </View>
 
@@ -193,9 +218,10 @@ const PersonalInfoStep = ({
 };
 
 const styles = StyleSheet.create({
+  // ... (all other styles remain)
   stepContainer: {
     flex: 1,
-    minHeight: 650, // Increased for additional field
+    minHeight: 650,
   },
   stepHeader: {
     alignItems: 'center',
@@ -240,7 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     shadowColor: THEME.shadowLight,
-    shadowOffset: { width: 0, height: 8},
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 10,
@@ -300,6 +326,11 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 40,
   },
+  // --- REMOVED: Unused style ---
+  // disabledInputBackground: {
+  //   backgroundColor: THEME.greyLight || '#f0f0f0',
+  //   borderColor: THEME.borderLight,
+  // },
 });
 
 export default React.memo(PersonalInfoStep);

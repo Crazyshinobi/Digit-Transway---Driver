@@ -33,22 +33,22 @@ const ModernInput = ({
         Animated.timing(shakeAnimation, {
           toValue: 10,
           duration: 100,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(shakeAnimation, {
           toValue: -10,
           duration: 100,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(shakeAnimation, {
           toValue: 10,
           duration: 100,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(shakeAnimation, {
           toValue: 0,
           duration: 100,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start();
     }

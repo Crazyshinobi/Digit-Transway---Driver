@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/config';
 import { THEME } from '../../themes/colors';
 import LinearGradient from 'react-native-linear-gradient';
@@ -102,10 +103,26 @@ const VerifyOTPScreen = ({ navigation, route }) => {
 
   const shakeAnimation = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 100, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+      Animated.timing(shakeAnim, {
+        toValue: 10,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: -10,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 10,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
@@ -120,16 +137,26 @@ const VerifyOTPScreen = ({ navigation, route }) => {
     setError('');
 
     try {
-      const response = await axios.post(`${API_URL}/api/vendor/auth/login-verify-otp`, {
-        contact_number: phoneNumber,
-        otp: otpToVerify,
-      });
-      
-      // --- MODIFIED: Get token and pass it to the Subscription screen ---
+      const response = await axios.post(
+        `${API_URL}/api/vendor/auth/login-verify-otp`,
+        {
+          contact_number: phoneNumber,
+          otp: otpToVerify,
+        },
+      );
+
       if (response.data?.success) {
         const accessToken = response.data.data?.access_token;
         if (accessToken) {
-          navigation.navigate('Subscription', { accessToken });
+          try {
+            await AsyncStorage.setItem('@user_token', accessToken);
+            await AsyncStorage.setItem('@user_phone_number', phoneNumber);
+            navigation.navigate('AuthLoading');
+          } catch (e) {
+            console.error('Failed to save session:', e);
+            setError('Login successful, but failed to save your session.');
+            shakeAnimation();
+          }
         } else {
           setError('Verification successful, but failed to create a session.');
           shakeAnimation();
@@ -141,7 +168,9 @@ const VerifyOTPScreen = ({ navigation, route }) => {
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Verification failed. Please try again.');
+      setError(
+        err.response?.data?.message || 'Verification failed. Please try again.',
+      );
       shakeAnimation();
     } finally {
       setIsLoading(false);
@@ -154,19 +183,29 @@ const VerifyOTPScreen = ({ navigation, route }) => {
     setError('');
 
     try {
-      const response = await axios.post(`${API_URL}/api/vendor/auth/login-send-otp`, {
-        contact_number: phoneNumber,
-      });
+      const response = await axios.post(
+        `${API_URL}/api/vendor/auth/login-send-otp`,
+        {
+          contact_number: phoneNumber,
+        },
+      );
 
       if (response.data?.success) {
-        Alert.alert('OTP Sent!', `A new 4-digit OTP has been sent to your number.`);
+        Alert.alert(
+          'OTP Sent!',
+          'A new 4-digit OTP has been sent to your number.',
+        );
         setCanResend(false);
         setTimeLeft(60);
       } else {
         Alert.alert('Error', response.data?.message || 'Failed to resend OTP.');
       }
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to resend OTP. Please try again.');
+      Alert.alert(
+        'Error',
+        err.response?.data?.message ||
+          'Failed to resend OTP. Please try again.',
+      );
     } finally {
       setResendLoading(false);
     }
@@ -195,7 +234,12 @@ const VerifyOTPScreen = ({ navigation, route }) => {
           <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
-          <Animated.View style={[styles.headerContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <Animated.View
+            style={[
+              styles.headerContent,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
+          >
             <View style={styles.iconContainer}>
               <Text style={styles.otpIcon}>📱</Text>
             </View>
@@ -222,7 +266,10 @@ const VerifyOTPScreen = ({ navigation, route }) => {
                   styles.formContainer,
                   {
                     opacity: fadeAnim,
-                    transform: [{ translateY: slideAnim }, { translateX: shakeAnim }],
+                    transform: [
+                      { translateY: slideAnim },
+                      { translateX: shakeAnim },
+                    ],
                   },
                 ]}
               >
@@ -282,7 +329,8 @@ const VerifyOTPScreen = ({ navigation, route }) => {
           <TouchableOpacity
             style={[
               styles.verifyButton,
-              (otp.join('').length !== 4 || isLoading) && styles.verifyButtonDisabled,
+              (otp.join('').length !== 4 || isLoading) &&
+                styles.verifyButtonDisabled,
             ]}
             onPress={() => handleVerifyOTP()}
             disabled={otp.join('').length !== 4 || isLoading}
@@ -290,7 +338,7 @@ const VerifyOTPScreen = ({ navigation, route }) => {
           >
             <LinearGradient
               colors={
-                (otp.join('').length !== 4 || isLoading)
+                otp.join('').length !== 4 || isLoading
                   ? ['#BDBDBD', '#BDBDBD']
                   : ['#74C6B7', '#74C6B7']
               }
@@ -414,7 +462,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
     paddingHorizontal: 4,
-  
   },
   otpInput: {
     width: (width - 160) / 4,

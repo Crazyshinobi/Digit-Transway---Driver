@@ -24,7 +24,7 @@ import LinearGradient from 'react-native-linear-gradient';
 
 const Geolocation = {
   getCurrentPosition: (success, error) => {
-    const position = { coords: { latitude: 28.6139, longitude: 77.2090 } };
+    const position = { coords: { latitude: 28.6139, longitude: 77.209 } };
     success(position);
   },
 };
@@ -34,105 +34,162 @@ const { width } = Dimensions.get('window');
 const Icon = ({ name, size = 24, color, style }) => {
   const getIcon = () => {
     switch (name) {
-      case 'trips': return '🗺️';
-      case 'profile': return '👤';
-      case 'notification': return '🔔';
-      case 'logout': return '🚪';
-      case 'earnings': return '💰';
-      case 'dashboard': return '📊';
-      case 'vehicle': return '🚛';
-      case 'route': return '📍';
-      case 'history': return '📜'; 
-      case 'verification': return '🛡️';
-      default: return '❔';
+      case 'trips':
+        return '🗺️';
+      case 'profile':
+        return '👤';
+      case 'notification':
+        return '🔔';
+      case 'logout':
+        return '🚪';
+      case 'earnings':
+        return '💰';
+      case 'dashboard':
+        return '📊';
+      case 'vehicle':
+        return '🚛';
+      case 'route':
+        return '📍';
+      case 'history':
+        return '📜';
+      case 'verification':
+        return '🛡️';
+      default:
+        return '❔';
     }
   };
   return <Text style={[{ fontSize: size, color }, style]}>{getIcon()}</Text>;
 };
 
 // --- NEW: Sidebar Menu Component ---
-const SidebarMenu = ({ isVisible, onClose, navigation, onSignOut, accessToken, isProfileComplete }) => {
-    const slideAnim = useRef(new Animated.Value(-width * 0.75)).current;
+const SidebarMenu = ({
+  isVisible,
+  onClose,
+  navigation,
+  onSignOut,
+  accessToken,
+  isProfileComplete,
+  userName,
+  userPhone,
+}) => {
+  const slideAnim = useRef(new Animated.Value(-width * 0.75)).current;
 
-    useEffect(() => {
-        if (isVisible) {
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                friction: 8,
-                tension: 100,
-                useNativeDriver: true,
-            }).start();
-        } else {
-            Animated.spring(slideAnim, {
-                toValue: -width * 0.75,
-                friction: 8,
-                tension: 100,
-                useNativeDriver: true,
-            }).start();
-        }
-    }, [isVisible]);
+  useEffect(() => {
+    if (isVisible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.spring(slideAnim, {
+        toValue: -width * 0.75,
+        friction: 8,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isVisible]);
 
-    const navigateAndClose = (screen) => {
-        navigation.navigate(screen, { accessToken });
-        onClose();
-    };
+  const navigateAndClose = screen => {
+    navigation.navigate(screen, { accessToken });
+    onClose();
+  };
 
-    return (
-        <Modal
-            transparent={true}
-            visible={isVisible}
-            animationType="fade"
-            onRequestClose={onClose}
-        >
-            <TouchableWithoutFeedback onPress={onClose}>
-                <View style={styles.sidebarOverlay}>
-                    <Animated.View style={[styles.sidebarContainer, { transform: [{ translateX: slideAnim }] }]}>
-                        <TouchableWithoutFeedback>
-                            <View style={{ flex: 1 }}>
-                                <LinearGradient colors={THEME.primaryGradient} style={styles.sidebarHeader}>
-                                    <View style={styles.sidebarAvatar}>
-                                        <Icon name="profile" size={32} color={THEME.primary} />
-                                    </View>
-                                    <Text style={styles.sidebarUserName}>Hello, Driver</Text>
-                                    <Text style={styles.sidebarUserPhone}>+91 98765 43210</Text>
-                                </LinearGradient>
+  return (
+    <Modal
+      transparent={true}
+      visible={isVisible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.sidebarOverlay}>
+          <Animated.View
+            style={[
+              styles.sidebarContainer,
+              { transform: [{ translateX: slideAnim }] },
+            ]}
+          >
+            <TouchableWithoutFeedback>
+              <View style={{ flex: 1 }}>
+                <LinearGradient
+                  colors={THEME.primaryGradient}
+                  style={styles.sidebarHeader}
+                >
+                  <View style={styles.sidebarAvatar}>
+                    <Icon name="profile" size={32} color={THEME.primary} />
+                  </View>
+                  <Text style={styles.sidebarUserName}>
+                    {userName || 'Hello, Driver'}
+                  </Text>
+                  <Text style={styles.sidebarUserPhone}>{userPhone || ''}</Text>
+                </LinearGradient>
 
-                                <View style={styles.sidebarMenu}>
-                                   <TouchableOpacity style={styles.sidebarMenuItem} onPress={() => navigateAndClose('Verification')}>
-                                         <View style={styles.menuIconContainer}><Icon name="verification" size={20} color={THEME.primary} /></View>
-                                        <Text style={styles.sidebarMenuText}>Profile Verification</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.sidebarMenuItem} onPress={() => navigateAndClose('Profile')}>
-                                        <View style={styles.menuIconContainer}><Icon name="profile" size={20} color={THEME.primary} /></View>
-                                        <Text style={styles.sidebarMenuText}>Profile & Vehicle</Text>
-                                        {!isProfileComplete && <View style={styles.sidebarWarningDot} />}
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.sidebarMenuItem} onPress={() => navigateAndClose('BookingHistory')}>
-                                         <View style={styles.menuIconContainer}><Icon name="history" size={20} color={THEME.primary} /></View>
-                                        <Text style={styles.sidebarMenuText}>Booking History</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.sidebarMenuItem} onPress={() => navigateAndClose('Earnings')}>
-                                         <View style={styles.menuIconContainer}><Icon name="earnings" size={20} color={THEME.primary} /></View>
-                                        <Text style={styles.sidebarMenuText}>Earnings</Text>
-                                    </TouchableOpacity>
-                                   
-                                </View>
-
-                                <View style={styles.sidebarFooter}>
-                                    <TouchableOpacity style={styles.sidebarMenuItem} onPress={onSignOut}>
-                                        <View style={[styles.menuIconContainer, {backgroundColor: `${THEME.error}15`}]}><Icon name="logout" size={20} color={THEME.error} /></View>
-                                        <Text style={[styles.sidebarMenuText, { color: THEME.error }]}>Sign Out</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </Animated.View>
+                <View style={styles.sidebarMenu}>
+                  <TouchableOpacity
+                    style={styles.sidebarMenuItem}
+                    onPress={() => navigateAndClose('Profile')}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <Icon name="profile" size={20} color={THEME.primary} />
+                    </View>
+                    <Text style={styles.sidebarMenuText}>
+                      Profile & Vehicle
+                    </Text>
+                    {!isProfileComplete && (
+                      <View style={styles.sidebarWarningDot} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sidebarMenuItem}
+                    onPress={() => navigateAndClose('BookingHistory')}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <Icon name="history" size={20} color={THEME.primary} />
+                    </View>
+                    <Text style={styles.sidebarMenuText}>Booking History</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sidebarMenuItem}
+                    onPress={() => navigateAndClose('Earnings')}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <Icon name="earnings" size={20} color={THEME.primary} />
+                    </View>
+                    <Text style={styles.sidebarMenuText}>Earnings</Text>
+                  </TouchableOpacity>
                 </View>
-            </TouchableWithoutFeedback>
-        </Modal>
-    );
-};
 
+                <View style={styles.sidebarFooter}>
+                  <TouchableOpacity
+                    style={styles.sidebarMenuItem}
+                    onPress={onSignOut}
+                  >
+                    <View
+                      style={[
+                        styles.menuIconContainer,
+                        { backgroundColor: `${THEME.error}15` },
+                      ]}
+                    >
+                      <Icon name="logout" size={20} color={THEME.error} />
+                    </View>
+                    <Text
+                      style={[styles.sidebarMenuText, { color: THEME.error }]}
+                    >
+                      Sign Out
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </Animated.View>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+};
 
 const DashboardScreen = ({ navigation, route }) => {
   const [isOnline, setIsOnline] = useState(true);
@@ -142,21 +199,39 @@ const DashboardScreen = ({ navigation, route }) => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
-  
+  const [userName, setUserName] = useState('Hello, Driver');
+  const [userPhone, setUserPhone] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
 
-  const fetchBookingHistory = async (token) => {
+  const fetchBookingHistory = async token => {
     setIsHistoryLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/vendor/booking-history`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setBookingHistory(response.data?.success && Array.isArray(response.data.data) ? response.data.data : []);
+      const response = await axios.get(
+        `${API_URL}/api/vendor/booking-history`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setBookingHistory(
+        response.data?.success && Array.isArray(response.data.data)
+          ? response.data.data
+          : [],
+      );
     } catch (error) {
-      console.error("Failed to fetch booking history:", error.response?.data || error.message);
-      setBookingHistory([]);
+      console.error(
+        'Failed to fetch booking history:',
+        error.response?.data || error.message,
+      );
+      // Handle 401 Unauthorized specifically if needed
+      if (error.response?.status === 401) {
+        Alert.alert('Session Expired', 'Please log in again.', [
+          { text: 'OK', onPress: () => handleSignOut(true) }, // Pass true to avoid double alert
+        ]);
+      } else {
+        setBookingHistory([]);
+      }
     } finally {
       setIsHistoryLoading(false);
     }
@@ -164,81 +239,120 @@ const DashboardScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     const bootstrap = async () => {
-      let token = route.params?.accessToken;
-      if (!token) token = await AsyncStorage.getItem('userToken');
-      
+      // --- MODIFICATION: Using the correct key '@user_token' ---
+      const token = await AsyncStorage.getItem('@user_token');
+      const name = await AsyncStorage.getItem('@user_name');
+      const phone = await AsyncStorage.getItem('@user_phone_number');
+
+      if (name) {
+        setUserName(name);
+      }
+      if (phone) {
+        setUserPhone(phone);
+      }
+
       if (token) {
         setAccessToken(token);
         fetchBookingHistory(token);
       } else {
-        Alert.alert("Authentication Error", "Your session is invalid.", [
-          { text: "OK", onPress: () => navigation.navigate('Login') }
+        Alert.alert('Authentication Error', 'Your session is invalid.', [
+          { text: 'OK', onPress: () => navigation.replace('Login') }, // Use replace to prevent going back
         ]);
       }
     };
     bootstrap();
 
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
-      Animated.spring(cardScale, { toValue: 1, friction: 8, tension: 40, delay: 200, useNativeDriver: true }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.spring(cardScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: 200,
+        useNativeDriver: true,
+      }),
     ]).start();
-  }, []);
+  }, [navigation]); // Added navigation as dependency for the replace call
 
-  const getCurrentLocation = () => new Promise((resolve, reject) => {
-    Geolocation.getCurrentPosition(
-      position => resolve(position.coords),
-      error => {
-        Alert.alert("Location Error", "Could not get your location.");
-        reject(error);
-      }
-    );
-  });
+  const getCurrentLocation = () =>
+    new Promise((resolve, reject) => {
+      Geolocation.getCurrentPosition(
+        position => resolve(position.coords),
+        error => {
+          Alert.alert('Location Error', 'Could not get your location.');
+          reject(error);
+        },
+      );
+    });
 
-  const handleStatusToggle = async (newValue) => {
+  const handleStatusToggle = async newValue => {
     const previousValue = isOnline;
     setIsOnline(newValue);
     setIsToggleLoading(true);
     try {
-      if (!accessToken) throw new Error("Token missing.");
+      if (!accessToken) throw new Error('Token missing.');
       const location = await getCurrentLocation();
       await axios.post(
         `${API_URL}/api/vendor/availability/toggle`,
         { latitude: location.latitude, longitude: location.longitude },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
     } catch (error) {
-      console.error("Toggle error:", error.response?.data || error.message);
-      Alert.alert("Error", "Could not update status.");
+      console.error('Toggle error:', error.response?.data || error.message);
+      Alert.alert('Error', 'Could not update status.');
       setIsOnline(previousValue);
     } finally {
       setIsToggleLoading(false);
     }
   };
 
-  const handleSignOut = () => {
-    setIsSidebarVisible(false); 
+  // Modified to prevent double alerts
+  const handleSignOut = (silent = false) => {
+    setIsSidebarVisible(false);
     setTimeout(async () => {
-        try {
-            await AsyncStorage.removeItem('userToken');
-            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        } catch (e) {
-            console.error("Failed to sign out.", e);
-            Alert.alert("Error", "Could not sign out.");
+      try {
+        await AsyncStorage.removeItem('@user_token');
+        await AsyncStorage.removeItem('@user_phone_number'); // Clear both keys
+        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+      } catch (e) {
+        console.error('Failed to sign out.', e);
+        if (!silent) {
+          Alert.alert('Error', 'Could not sign out.');
         }
+      }
     }, 300);
   };
 
   const renderHistoryItem = ({ item }) => (
     <TouchableOpacity style={styles.historyItem}>
-      <View style={styles.historyItemIcon}><Text>📍</Text></View>
+      <View style={styles.historyItemIcon}>
+        <Text>📍</Text>
+      </View>
       <View style={styles.historyItemDetails}>
-        <Text style={styles.historyItemRoute} numberOfLines={1}>{item.pickup_location} to {item.dropoff_location}</Text>
-        <Text style={styles.historyItemDate}>{new Date(item.date).toDateString()}</Text>
+        <Text style={styles.historyItemRoute} numberOfLines={1}>
+          {item.pickup_location} to {item.dropoff_location}
+        </Text>
+        <Text style={styles.historyItemDate}>
+          {new Date(item.date).toDateString()}
+        </Text>
       </View>
       <View style={styles.historyItemRight}>
         <Text style={styles.historyItemEarnings}>₹{item.earnings}</Text>
-        <Text style={[styles.historyItemStatus, styles[`status_${item.status}`]]}>{item.status}</Text>
+        <Text
+          style={[styles.historyItemStatus, styles[`status_${item.status}`]]}
+        >
+          {item.status}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -246,7 +360,7 @@ const DashboardScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={THEME.primary} />
-      
+
       <SidebarMenu
         isVisible={isSidebarVisible}
         onClose={() => setIsSidebarVisible(false)}
@@ -254,23 +368,38 @@ const DashboardScreen = ({ navigation, route }) => {
         onSignOut={handleSignOut}
         accessToken={accessToken}
         isProfileComplete={isProfileComplete}
+        userName={userName}
+        userPhone={userPhone}
       />
-      
-      <Animated.View 
-        style={[ styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] } ]}
+
+      <Animated.View
+        style={[
+          styles.header,
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+        ]}
       >
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => setIsSidebarVisible(true)} style={styles.avatarContainer}>
+            <TouchableOpacity
+              onPress={() => setIsSidebarVisible(true)}
+              style={styles.avatarContainer}
+            >
               <Icon name="profile" size={24} color="#fff" />
               {!isProfileComplete && (
-                  <View style={styles.profileWarningBadge}>
-                      <Text style={styles.profileWarningText}>!</Text>
-                  </View>
+                <View style={styles.profileWarningBadge}>
+                  <Text style={styles.profileWarningText}>!</Text>
+                </View>
               )}
             </TouchableOpacity>
             <View>
-              <Text style={styles.greeting}>Hello, Driver!</Text>
+              <Text style={styles.greeting}>
+                Hello,{' '}
+                {userName
+                  ? userName.length > 10
+                    ? userName.slice(0, 10) + '...!'
+                    : userName
+                  : 'Driver!'}
+              </Text>{' '}
               <Text style={styles.subtitle}>Welcome to your dashboard</Text>
             </View>
           </View>
@@ -283,34 +412,49 @@ const DashboardScreen = ({ navigation, route }) => {
         </View>
       </Animated.View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View
-          style={[ styles.statusCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: cardScale }] } ]}
+          style={[
+            styles.statusCard,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }, { scale: cardScale }],
+            },
+          ]}
         >
           <View style={styles.statusLeft}>
             <View style={styles.statusHeader}>
               <View style={styles.statusIndicator}>
-                <View style={[ styles.statusDot, { backgroundColor: isOnline ? THEME.success : THEME.error } ]} />
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: isOnline ? THEME.success : THEME.error },
+                  ]}
+                />
                 <Text style={styles.statusTitle}>Driver Status</Text>
               </View>
             </View>
-            
-            <Text style={[ styles.statusText, { color: isOnline ? THEME.success : THEME.error } ]}>
+
+            <Text
+              style={[
+                styles.statusText,
+                { color: isOnline ? THEME.success : THEME.error },
+              ]}
+            >
               {isOnline ? 'Online & Available' : 'Offline'}
             </Text>
-            
+
             <Text style={styles.statusSubtitle}>
-              {isOnline 
-                ? 'Ready to accept new trip requests' 
-                : 'You won\'t receive trip notifications'
-              }
+              {isOnline
+                ? 'Ready to accept new trip requests'
+                : "You won't receive trip notifications"}
             </Text>
           </View>
-          
+
           <View style={styles.statusRight}>
             {isToggleLoading ? (
               <ActivityIndicator color={THEME.primary} />
@@ -327,7 +471,10 @@ const DashboardScreen = ({ navigation, route }) => {
         </Animated.View>
 
         <Animated.View
-          style={[ styles.statsContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] } ]}
+          style={[
+            styles.statsContainer,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
         >
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
@@ -337,23 +484,30 @@ const DashboardScreen = ({ navigation, route }) => {
             <Text style={styles.statNumber}>7</Text>
             <Text style={styles.statChange}>+2 from yesterday</Text>
           </View>
-          
+
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <Icon name="earnings" size={20} color={THEME.success} />
               <Text style={styles.statLabel}>Today's Earnings</Text>
             </View>
-            <Text style={[styles.statNumber, { color: THEME.success }]}>₹1,240</Text>
+            <Text style={[styles.statNumber, { color: THEME.success }]}>
+              ₹1,240
+            </Text>
             <Text style={styles.statChange}>+18% this week</Text>
           </View>
         </Animated.View>
 
         <Animated.View
-          style={[ styles.actionCardContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] } ]}
+          style={[
+            styles.actionCardContainer,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
         >
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('AvailableTrip', { accessToken })}
+            onPress={() =>
+              navigation.navigate('AvailableTrip', { accessToken })
+            }
             activeOpacity={0.8}
           >
             <View style={styles.actionCardHeader}>
@@ -367,36 +521,46 @@ const DashboardScreen = ({ navigation, route }) => {
                 </Text>
               </View>
             </View>
-            
+
             <View style={styles.actionCardFooter}>
               <Text style={styles.actionCTA}>Start Searching →</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
-        
+
         <Animated.View
-          style={[ styles.overviewCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] } ]}
+          style={[
+            styles.overviewCard,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
         >
-            <View style={styles.overviewHeader}>
-                <Icon name="history" size={22} color={THEME.primary} />
-                <Text style={styles.overviewTitle}>Recent Bookings</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('BookingHistory', { accessToken })}>
-                    <Text style={styles.viewAllText}>View All</Text>
-                </TouchableOpacity>
-            </View>
-            
-            {isHistoryLoading ? (
-                <ActivityIndicator color={THEME.primary} style={{ marginVertical: 20 }}/>
-            ) : bookingHistory.length > 0 ? (
-                <FlatList
-                    data={bookingHistory.slice(0, 3)}
-                    renderItem={renderHistoryItem}
-                    keyExtractor={item => item.id.toString()}
-                    scrollEnabled={false}
-                />
-            ) : (
-                <Text style={styles.noHistoryText}>No recent bookings found.</Text>
-            )}
+          <View style={styles.overviewHeader}>
+            <Icon name="history" size={22} color={THEME.primary} />
+            <Text style={styles.overviewTitle}>Recent Bookings</Text>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('BookingHistory', { accessToken })
+              }
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {isHistoryLoading ? (
+            <ActivityIndicator
+              color={THEME.primary}
+              style={{ marginVertical: 20 }}
+            />
+          ) : bookingHistory.length > 0 ? (
+            <FlatList
+              data={bookingHistory.slice(0, 3)}
+              renderItem={renderHistoryItem}
+              keyExtractor={item => item.id.toString()}
+              scrollEnabled={false}
+            />
+          ) : (
+            <Text style={styles.noHistoryText}>No recent bookings found.</Text>
+          )}
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -521,7 +685,7 @@ const styles = StyleSheet.create({
   },
   statusRight: {
     alignItems: 'center',
-    minWidth: 50, 
+    minWidth: 50,
   },
   statusSwitch: {
     transform: [{ scale: 1.1 }],
@@ -571,7 +735,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   actionCard: {
-    backgroundColor: THEME.textPrimary, 
+    backgroundColor: THEME.textPrimary,
     borderRadius: 20,
     padding: 24,
     shadowColor: THEME.primary,
@@ -643,81 +807,81 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   viewAllText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: THEME.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.primary,
   },
   noHistoryText: {
-      textAlign: 'center',
-      color: THEME.textSecondary,
-      marginVertical: 20,
-      fontSize: 14,
+    textAlign: 'center',
+    color: THEME.textSecondary,
+    marginVertical: 20,
+    fontSize: 14,
   },
   historyItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: THEME.borderLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.borderLight,
   },
   historyItemIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: THEME.surface,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   historyItemDetails: {
-      flex: 1,
+    flex: 1,
   },
   historyItemRoute: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: THEME.textPrimary,
-      marginBottom: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.textPrimary,
+    marginBottom: 4,
   },
   historyItemDate: {
-      fontSize: 12,
-      color: THEME.textSecondary,
+    fontSize: 12,
+    color: THEME.textSecondary,
   },
   historyItemRight: {
-      alignItems: 'flex-end',
+    alignItems: 'flex-end',
   },
   historyItemEarnings: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      color: THEME.success,
-      marginBottom: 4,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: THEME.success,
+    marginBottom: 4,
   },
   historyItemStatus: {
-      fontSize: 11,
-      fontWeight: 'bold',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      overflow: 'hidden',
-      textTransform: 'uppercase',
-      marginTop: 4,
+    fontSize: 11,
+    fontWeight: 'bold',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+    textTransform: 'uppercase',
+    marginTop: 4,
   },
   status_completed: {
-      backgroundColor: `${THEME.success}20`,
-      color: THEME.success,
+    backgroundColor: `${THEME.success}20`,
+    color: THEME.success,
   },
   sidebarOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sidebarContainer: {
-      width: width * 0.75,
-      height: '100%',
-      backgroundColor: THEME.background,
+    width: width * 0.75,
+    height: '100%',
+    backgroundColor: THEME.background,
   },
   sidebarHeader: {
-      padding: 20,
-      paddingTop: 60,
-      alignItems: 'center',
+    padding: 20,
+    paddingTop: 60,
+    alignItems: 'center',
   },
   sidebarAvatar: {
     width: 80,
@@ -731,37 +895,37 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.5)',
   },
   sidebarUserName: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: THEME.textOnPrimary,
-      marginBottom: 4,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: THEME.textOnPrimary,
+    marginBottom: 4,
   },
   sidebarUserPhone: {
-      fontSize: 14,
-      color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
   },
   sidebarMenu: {
-      flex: 1,
-      padding: 20,
+    flex: 1,
+    padding: 20,
   },
   sidebarMenuItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
   },
   sidebarIcon: {
-      marginRight: 16,
-      width: 24,
+    marginRight: 16,
+    width: 24,
   },
   sidebarMenuText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: THEME.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME.textPrimary,
   },
   sidebarFooter: {
-      padding: 20,
-      borderTopWidth: 1,
-      borderTopColor: THEME.borderLight,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: THEME.borderLight,
   },
   menuIconContainer: {
     width: 40,
@@ -800,4 +964,3 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardScreen;
-
