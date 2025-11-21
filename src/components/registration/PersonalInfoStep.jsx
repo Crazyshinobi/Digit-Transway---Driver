@@ -5,23 +5,101 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Alert,
 } from 'react-native';
 import ModernInput from '../common/ModernInput';
 import RadioButton from '../common/RadioButton';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { THEME } from '../../themes/colors';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
-const PersonalInfoStep = ({
-  formData,
-  setFormData,
-  errors,
-  clearFieldError,
-  showDatePicker,
-  setShowDatePicker,
-  formatDate,
-  onDateChange,
-}) => {
-  // --- MODIFIED: Re-enabled name change ---
+const PersonalInfoStep = () => {
+  const {
+    formData,
+    setFormData,
+    errors,
+    clearFieldError,
+    showDatePicker,
+    setShowDatePicker,
+    formatDate,
+    onDateChange,
+  } = useRegistrationContext();
+  const imageOptions = {
+    mediaType: 'photo',
+    includeBase64: false,
+    maxHeight: 2000,
+    maxWidth: 2000,
+    quality: 0.8,
+  };
+
+  const createResponseHandler = useCallback(
+    imageKey => response => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+        return;
+      }
+
+      if (response.error || response.errorMessage) {
+        Alert.alert(
+          'Error',
+          `ImagePicker Error: ${response.errorMessage || response.error}`,
+        );
+        return;
+      }
+
+      if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        setFormData(prev => ({
+          ...prev,
+          [imageKey]: {
+            uri: asset.uri,
+            type: asset.type,
+            fileName: asset.fileName || `${imageKey}_${Date.now()}.jpg`,
+          },
+        }));
+        clearFieldError(imageKey);
+      }
+    },
+    [setFormData, clearFieldError],
+  );
+
+  const handleImagePick = useCallback(
+    (imageKey, title) => {
+      const responseHandler = createResponseHandler(imageKey);
+      Alert.alert(
+        title || 'Select Image Source',
+        'Choose an option to upload your document.',
+        [
+          {
+            text: 'Take Photo',
+            onPress: () => launchCamera(imageOptions, responseHandler),
+          },
+          {
+            text: 'Choose from Gallery',
+            onPress: () => launchImageLibrary(imageOptions, responseHandler),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true },
+      );
+    },
+    [createResponseHandler],
+  );
+
+  const pickAadhaarFront = useCallback(
+    () => handleImagePick('aadhaar_front', 'Upload Aadhaar Front'),
+    [handleImagePick],
+  );
+
+  const pickAadhaarBack = useCallback(
+    () => handleImagePick('aadhaar_back', 'Upload Aadhaar Back'),
+    [handleImagePick],
+  );
+
   const handleNameChange = useCallback(
     text => {
       setFormData(prev => ({ ...prev, name: text }));
@@ -38,9 +116,6 @@ const PersonalInfoStep = ({
     [setFormData, clearFieldError],
   );
 
-  // --- Password field is already commented out ---
-  // const handlePasswordChange = useCallback( ... );
-
   const handleEmergencyContactChange = useCallback(
     text => {
       setFormData(prev => ({ ...prev, emergency_contact: text }));
@@ -49,16 +124,23 @@ const PersonalInfoStep = ({
     [setFormData, clearFieldError],
   );
 
-  // --- NEW: Added handler for Aadhaar number ---
   const handleAadhaarChange = useCallback(
     text => {
-      setFormData(prev => ({ ...prev, aadhar_number: text }));
+      setFormData(prev => ({ ...prev, aadhar_number_manual: text }));
       clearFieldError('aadhar_number');
     },
     [setFormData, clearFieldError],
   );
 
-  // --- MODIFIED: Always allow date picker to open ---
+  const handleGSTChange = useCallback(
+    text => {
+      const formattedText = text.toUpperCase();
+      setFormData(prev => ({ ...prev, gst_number_manual: formattedText }));
+      clearFieldError('gst_number');
+    },
+    [setFormData, clearFieldError],
+  );
+
   const handleDatePickerOpen = useCallback(() => {
     setShowDatePicker(true);
   }, [setShowDatePicker]);
@@ -89,17 +171,13 @@ const PersonalInfoStep = ({
     [formatDate, formData.dob],
   );
 
-  // --- REMOVED: Check for auto-filled fields is no longer needed ---
-  // const isNameAutofilled = !!formData.name;
-  // const isDobAutofilled = !!formData.dob;
-  // const isAadhaarAutofilled = !!formData.aadhar_number;
-
   return (
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>
         <View style={styles.iconContainer}>
           <Text style={styles.stepIcon}>👤</Text>
         </View>
+
         <Text style={styles.stepTitle}>Personal Information</Text>
         <Text style={styles.stepSubtitle}>
           Please fill in or confirm your details
@@ -107,31 +185,107 @@ const PersonalInfoStep = ({
       </View>
 
       <View style={styles.inputCard}>
-        {/* --- MODIFIED: Full Name (Editable) --- */}
         <ModernInput
-          placeholder="Full Name (from Aadhaar)"
+          placeholder="Full Name"
           value={formData.name}
-          onChangeText={handleNameChange} // <-- Added
+          onChangeText={handleNameChange}
           error={errors.name}
           autoCapitalize="words"
-          // editable={!isNameAutofilled} // <-- Removed
-          // containerStyle={ // <-- Removed
-          //   isNameAutofilled ? styles.disabledInputBackground : null
-          // }
         />
 
-        {/* --- MODIFIED: Aadhaar Number (Editable) --- */}
         <ModernInput
-          placeholder="Aadhaar Number (from Aadhaar)"
-          value={formData.aadhar_number}
-          onChangeText={handleAadhaarChange} // <-- Added
+          placeholder="Aadhaar Number"
+          value={formData.aadhar_number_manual || formData.aadhar_number} 
+          onChangeText={handleAadhaarChange}
           error={errors.aadhar_number}
           keyboardType="numeric"
-          // editable={!isAadhaarAutofilled} // <-- Removed
-          // containerStyle={ // <-- Removed
-          //   isAadhaarAutofilled ? styles.disabledInputBackground : null
-          // }
         />
+
+        {/* Aadhaar front upload */}
+        <TouchableOpacity
+          style={[
+            styles.uploadButton,
+            errors.aadhaar_front && styles.uploadError,
+          ]}
+          onPress={pickAadhaarFront}
+          activeOpacity={0.7}
+        >
+          <View style={styles.uploadIcon}>
+            <Text style={styles.uploadIconText}>
+              {formData.aadhaar_front ? '✓' : '📷'}
+            </Text>
+          </View>
+
+          <View style={styles.uploadContent}>
+            <Text
+              style={[
+                styles.uploadTitle,
+                formData.aadhaar_front && { color: THEME.success },
+              ]}
+            >
+              {formData.aadhaar_front
+                ? 'Aadhaar Front Uploaded'
+                : 'Upload Aadhaar Front*'}
+            </Text>
+
+            <Text
+              style={styles.uploadSubtitle}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              {formData.aadhaar_front?.fileName || 'JPG or PNG, max 5MB'}
+            </Text>
+          </View>
+
+          <Text style={styles.chevronIcon}>›</Text>
+        </TouchableOpacity>
+
+        {errors.aadhaar_front && (
+          <Text style={styles.uploadErrorText}>{errors.aadhaar_front}</Text>
+        )}
+
+        {/* Aadhaar back upload */}
+        <TouchableOpacity
+          style={[
+            styles.uploadButton,
+            errors.aadhaar_back && styles.uploadError,
+          ]}
+          onPress={pickAadhaarBack}
+          activeOpacity={0.7}
+        >
+          <View style={styles.uploadIcon}>
+            <Text style={styles.uploadIconText}>
+              {formData.aadhaar_back ? '✓' : '📷'}
+            </Text>
+          </View>
+
+          <View style={styles.uploadContent}>
+            <Text
+              style={[
+                styles.uploadTitle,
+                formData.aadhaar_back && { color: THEME.success },
+              ]}
+            >
+              {formData.aadhaar_back
+                ? 'Aadhaar Back Uploaded'
+                : 'Upload Aadhaar Back*'}
+            </Text>
+
+            <Text
+              style={styles.uploadSubtitle}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              {formData.aadhaar_back?.fileName || 'JPG or PNG, max 5MB'}
+            </Text>
+          </View>
+
+          <Text style={styles.chevronIcon}>›</Text>
+        </TouchableOpacity>
+
+        {errors.aadhaar_back && (
+          <Text style={styles.uploadErrorText}>{errors.aadhaar_back}</Text>
+        )}
 
         <ModernInput
           placeholder="Email Address"
@@ -142,19 +296,18 @@ const PersonalInfoStep = ({
           autoCapitalize="none"
           autoCorrect={false}
         />
+        <ModernInput
+          placeholder="GST Number"
+          value={formData.gst_number_manual || formData.gst_number} 
+          onChangeText={handleGSTChange}
+          error={errors.gst_number}
+          autoCapitalize="characters"
+          maxLength={15} 
+        />
 
-        {/* --- Password field is already commented out --- */}
-
-        {/* --- MODIFIED: Date of Birth (Editable) --- */}
         <TouchableOpacity
-          style={[
-            styles.datePickerButton,
-            errors.dob && styles.inputError,
-            // isDobAutofilled && styles.disabledInputBackground, // <-- Removed
-          ]}
+          style={[styles.datePickerButton, errors.dob && styles.inputError]}
           onPress={handleDatePickerOpen}
-          // activeOpacity={isDobAutofilled ? 1 : 0.7} // <-- Removed
-          // disabled={isDobAutofilled} // <-- Removed
         >
           <Text
             style={[
@@ -165,8 +318,8 @@ const PersonalInfoStep = ({
             {formattedDate}
           </Text>
           <Text style={styles.chevronIcon}>›</Text>
-          {/* {!isDobAutofilled && <Text style={styles.chevronIcon}>›</Text>} <-- Removed */}
         </TouchableOpacity>
+
         {errors.dob && <Text style={styles.errorText}>{errors.dob}</Text>}
 
         <View style={styles.genderContainer}>
@@ -189,6 +342,7 @@ const PersonalInfoStep = ({
             />
           </View>
         </View>
+
         {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
 
         <ModernInput
@@ -218,7 +372,6 @@ const PersonalInfoStep = ({
 };
 
 const styles = StyleSheet.create({
-  // ... (all other styles remain)
   stepContainer: {
     flex: 1,
     minHeight: 650,
@@ -326,11 +479,54 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 40,
   },
-  // --- REMOVED: Unused style ---
-  // disabledInputBackground: {
-  //   backgroundColor: THEME.greyLight || '#f0f0f0',
-  //   borderColor: THEME.borderLight,
-  // },
+
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.primarySurface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: THEME.borderLight,
+    marginBottom: 16,
+  },
+  uploadError: {
+    borderColor: THEME.error,
+    backgroundColor: `${THEME.error}08`,
+  },
+  uploadIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: THEME.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  uploadIconText: {
+    fontSize: 20,
+    color: THEME.primary,
+  },
+  uploadContent: {
+    flex: 1,
+  },
+  uploadTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: THEME.primary,
+    marginBottom: 4,
+  },
+  uploadSubtitle: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+  },
+  uploadErrorText: {
+    color: THEME.error,
+    fontSize: 13,
+    marginTop: -8,
+    marginBottom: 8,
+    paddingLeft: 4,
+  },
 });
 
 export default React.memo(PersonalInfoStep);

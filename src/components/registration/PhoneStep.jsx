@@ -1,16 +1,18 @@
-// src/components/registration/PhoneStep.js
+
 import React from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { THEME } from '../../themes/colors';
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
-const PhoneStep = ({
-  phoneNumber,
-  onPhoneChange,
-  formatPhoneNumber,
-  errors,
-  isRateLimited,
-  countdown,
-}) => {
+const PhoneStep = () => {
+  const {
+    phoneNumber,
+    handlePhoneNumberChange: onPhoneChange,
+    formatPhoneNumber,
+    errors,
+    isRateLimited,
+    countdown,
+  } = useRegistrationContext();
   return (
     <View style={styles.stepContainer}>
       <View style={styles.stepHeader}>

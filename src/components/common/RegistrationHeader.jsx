@@ -1,4 +1,3 @@
-// src/components/common/RegistrationHeader.js
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';

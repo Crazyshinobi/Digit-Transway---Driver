@@ -12,8 +12,8 @@ import {
 import axios from 'axios';
 import { THEME } from '../../themes/colors';
 import { API_URL } from '../../config/config';
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
-// A custom Dropdown component to replace the native Picker
 const CustomPicker = ({ label, data, onSelect, selectedValue, placeholder, error, enabled = true }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const selectedItem = data.find(item => item.value === selectedValue);
@@ -65,7 +65,8 @@ const CustomPicker = ({ label, data, onSelect, selectedValue, placeholder, error
 };
 
 
-const VehicleStep = ({ formData, setFormData, errors, clearFieldError }) => {
+const VehicleStep = () => {
+  const { formData, setFormData, errors, clearFieldError } = useRegistrationContext();
   const [vehicles, setVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -197,7 +198,6 @@ const styles = StyleSheet.create({
   errorBorder: {
     borderColor: THEME.error,
   },
-  // Custom Picker Styles
   pickerButton: {
     borderWidth: 1,
     borderColor: THEME.border,

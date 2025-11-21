@@ -21,6 +21,11 @@ import axios from 'axios';
 import { API_URL } from '../../config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
+import Sound from 'react-native-sound'; 
+import { useIsFocused } from '@react-navigation/native'; 
+
+
+Sound.setCategory('Playback');
 
 const Geolocation = {
   getCurrentPosition: (success, error) => {
@@ -61,7 +66,7 @@ const Icon = ({ name, size = 24, color, style }) => {
   return <Text style={[{ fontSize: size, color }, style]}>{getIcon()}</Text>;
 };
 
-// --- NEW: Sidebar Menu Component ---
+
 const SidebarMenu = ({
   isVisible,
   onClose,
@@ -135,12 +140,7 @@ const SidebarMenu = ({
                     <View style={styles.menuIconContainer}>
                       <Icon name="profile" size={20} color={THEME.primary} />
                     </View>
-                    <Text style={styles.sidebarMenuText}>
-                      Profile & Vehicle
-                    </Text>
-                    {!isProfileComplete && (
-                      <View style={styles.sidebarWarningDot} />
-                    )}
+                    <Text style={styles.sidebarMenuText}>View Profile</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.sidebarMenuItem}
@@ -150,15 +150,6 @@ const SidebarMenu = ({
                       <Icon name="history" size={20} color={THEME.primary} />
                     </View>
                     <Text style={styles.sidebarMenuText}>Booking History</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.sidebarMenuItem}
-                    onPress={() => navigateAndClose('Earnings')}
-                  >
-                    <View style={styles.menuIconContainer}>
-                      <Icon name="earnings" size={20} color={THEME.primary} />
-                    </View>
-                    <Text style={styles.sidebarMenuText}>Earnings</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -192,71 +183,150 @@ const SidebarMenu = ({
 };
 
 const DashboardScreen = ({ navigation, route }) => {
-  const [isOnline, setIsOnline] = useState(true);
+  const isFocused = useIsFocused(); 
+  const [isOnline, setIsOnline] = useState(false);
+  const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [accessToken, setAccessToken] = useState(null);
   const [isToggleLoading, setIsToggleLoading] = useState(false);
-  const [bookingHistory, setBookingHistory] = useState([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  
+  
+  const [pendingBookings, setPendingBookings] = useState([]);
+  
+
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [userName, setUserName] = useState('Hello, Driver');
   const [userPhone, setUserPhone] = useState('');
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
 
-  const fetchBookingHistory = async token => {
-    setIsHistoryLoading(true);
-    try {
-      const response = await axios.get(
-        `${API_URL}/api/vendor/booking-history`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      setBookingHistory(
-        response.data?.success && Array.isArray(response.data.data)
-          ? response.data.data
-          : [],
-      );
-    } catch (error) {
-      console.error(
-        'Failed to fetch booking history:',
-        error.response?.data || error.message,
-      );
-      // Handle 401 Unauthorized specifically if needed
-      if (error.response?.status === 401) {
-        Alert.alert('Session Expired', 'Please log in again.', [
-          { text: 'OK', onPress: () => handleSignOut(true) }, // Pass true to avoid double alert
-        ]);
-      } else {
-        setBookingHistory([]);
+  
+  const prevCountRef = useRef(0);
+  const isFirstLoad = useRef(true);
+  const notificationSound = useRef(null);
+
+  
+  useEffect(() => {
+    console.log('[Sound] Initializing sound object...');
+    notificationSound.current = new Sound('notification.mp3', Sound.MAIN_BUNDLE, (error) => {
+      if (error) {
+        console.log('[Sound] Failed to load the sound', error);
+        return;
       }
-    } finally {
-      setIsHistoryLoading(false);
+      console.log(`[Sound] Sound loaded successfully. Duration: ${notificationSound.current.getDuration()}s`);
+    });
+
+    return () => {
+      if (notificationSound.current) {
+        console.log('[Sound] Releasing sound resources...');
+        notificationSound.current.release();
+      }
+    };
+  }, []);
+
+  const playNotificationSound = () => {
+    if (notificationSound.current) {
+      console.log('[Sound] Attempting to play sound...');
+      notificationSound.current.play((success) => {
+        if (success) {
+          console.log('[Sound] Playback finished successfully');
+        } else {
+          console.log('[Sound] Playback failed due to audio decoding errors');
+        }
+      });
+    } else {
+      console.log('[Sound] Sound object is null, cannot play');
     }
   };
 
+  const fetchInitialStatus = async token => {
+    setIsStatusLoading(true);
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/vendor/availability/status`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (response.data?.success) {
+        const onlineStatus = response.data.data.availability.is_online;
+        setIsOnline(onlineStatus);
+      }
+    } catch (error) {
+      console.error(
+        'Failed to fetch initial status:',
+        error.response?.data || error.message,
+      );
+    } finally {
+      setIsStatusLoading(false);
+    }
+  };
+
+  
+  const checkForNewBookings = async () => {
+    try {
+      console.log("Booking Data fetched")
+      const token = await AsyncStorage.getItem('@user_token');
+      if (!token) return;
+
+      
+      const response = await axios.get(`${API_URL}/api/vendor/booking-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data?.success) {
+        const currentRequests = response.data.data?.requests || [];
+        const currentCount = currentRequests.length;
+
+        
+        setPendingBookings(currentRequests);
+
+        
+        if (currentCount > prevCountRef.current && !isFirstLoad.current) {
+          console.log(`[Sound Trigger] New booking detected! Previous: ${prevCountRef.current}, Current: ${currentCount}`);
+          playNotificationSound();
+          Alert.alert("New Booking!", "You have a new pending request.");
+        }
+
+        prevCountRef.current = currentCount;
+        isFirstLoad.current = false;
+      }
+    } catch (error) {
+      console.error("[Polling] Error fetching bookings:", error.message);
+    }
+  };
+
+  
+  useEffect(() => {
+    let intervalId;
+
+    if (isFocused) {
+      checkForNewBookings(); 
+      intervalId = setInterval(() => {
+        checkForNewBookings();
+      }, 5000); 
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isFocused]);
+
   useEffect(() => {
     const bootstrap = async () => {
-      // --- MODIFICATION: Using the correct key '@user_token' ---
       const token = await AsyncStorage.getItem('@user_token');
       const name = await AsyncStorage.getItem('@user_name');
       const phone = await AsyncStorage.getItem('@user_phone_number');
 
-      if (name) {
-        setUserName(name);
-      }
-      if (phone) {
-        setUserPhone(phone);
-      }
+      if (name) setUserName(name);
+      if (phone) setUserPhone(phone);
 
       if (token) {
         setAccessToken(token);
-        fetchBookingHistory(token);
+        fetchInitialStatus(token);
+        
       } else {
         Alert.alert('Authentication Error', 'Your session is invalid.', [
-          { text: 'OK', onPress: () => navigation.replace('Login') }, // Use replace to prevent going back
+          { text: 'OK', onPress: () => navigation.replace('Login') },
         ]);
       }
     };
@@ -282,7 +352,7 @@ const DashboardScreen = ({ navigation, route }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [navigation]); // Added navigation as dependency for the replace call
+  }, [navigation]);
 
   const getCurrentLocation = () =>
     new Promise((resolve, reject) => {
@@ -299,14 +369,29 @@ const DashboardScreen = ({ navigation, route }) => {
     const previousValue = isOnline;
     setIsOnline(newValue);
     setIsToggleLoading(true);
+
     try {
       if (!accessToken) throw new Error('Token missing.');
-      const location = await getCurrentLocation();
-      await axios.post(
-        `${API_URL}/api/vendor/availability/toggle`,
-        { latitude: location.latitude, longitude: location.longitude },
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
+
+      let endpoint = '';
+      let payload = {};
+
+      if (newValue === true) {
+        endpoint = `${API_URL}/api/vendor/availability/go-online`;
+        const location = await getCurrentLocation();
+        payload = {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        };
+      } else {
+        endpoint = `${API_URL}/api/vendor/availability/go-offline`;
+        payload = {};
+      }
+
+      await axios.post(endpoint, payload, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
     } catch (error) {
       console.error('Toggle error:', error.response?.data || error.message);
       Alert.alert('Error', 'Could not update status.');
@@ -316,13 +401,12 @@ const DashboardScreen = ({ navigation, route }) => {
     }
   };
 
-  // Modified to prevent double alerts
   const handleSignOut = (silent = false) => {
     setIsSidebarVisible(false);
     setTimeout(async () => {
       try {
         await AsyncStorage.removeItem('@user_token');
-        await AsyncStorage.removeItem('@user_phone_number'); // Clear both keys
+        await AsyncStorage.removeItem('@user_phone_number');
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       } catch (e) {
         console.error('Failed to sign out.', e);
@@ -333,25 +417,38 @@ const DashboardScreen = ({ navigation, route }) => {
     }, 300);
   };
 
-  const renderHistoryItem = ({ item }) => (
-    <TouchableOpacity style={styles.historyItem}>
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        day: 'numeric', month: 'short'
+      });
+    } catch (e) { return dateString; }
+  };
+
+  
+  const renderPendingItem = ({ item }) => (
+    <TouchableOpacity style={styles.historyItem} onPress={() => navigation.navigate('BookingHistory')}>
       <View style={styles.historyItemIcon}>
-        <Text>📍</Text>
+        <Text>🔔</Text>
       </View>
       <View style={styles.historyItemDetails}>
+        {/* Use pending structure: pickup_location.address */}
         <Text style={styles.historyItemRoute} numberOfLines={1}>
-          {item.pickup_location} to {item.dropoff_location}
+          {item.pickup_location?.address || 'Unknown'}
         </Text>
         <Text style={styles.historyItemDate}>
-          {new Date(item.date).toDateString()}
+          {formatDisplayDate(item.schedule?.pickup_datetime)} • {item.material?.name}
         </Text>
       </View>
       <View style={styles.historyItemRight}>
-        <Text style={styles.historyItemEarnings}>₹{item.earnings}</Text>
+        <Text style={styles.historyItemEarnings}>
+          ₹{item.pricing?.final_amount || item.pricing?.estimated_price || '0'}
+        </Text>
         <Text
-          style={[styles.historyItemStatus, styles[`status_${item.status}`]]}
+          style={[styles.historyItemStatus, styles.status_pending]}
         >
-          {item.status}
+          NEW
         </Text>
       </View>
     </TouchableOpacity>
@@ -385,28 +482,25 @@ const DashboardScreen = ({ navigation, route }) => {
               style={styles.avatarContainer}
             >
               <Icon name="profile" size={24} color="#fff" />
-              {!isProfileComplete && (
-                <View style={styles.profileWarningBadge}>
-                  <Text style={styles.profileWarningText}>!</Text>
-                </View>
-              )}
             </TouchableOpacity>
             <View>
               <Text style={styles.greeting}>
-                Hello,{' '}
+                Hi,
                 {userName
                   ? userName.length > 10
                     ? userName.slice(0, 10) + '...!'
                     : userName
                   : 'Driver!'}
-              </Text>{' '}
+              </Text>
               <Text style={styles.subtitle}>Welcome to your dashboard</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <View style={styles.notificationIconContainer}>
               <Icon name="notification" size={20} color="#fff" />
-              <View style={styles.notificationBadge} />
+              {pendingBookings.length > 0 && (
+                 <View style={styles.notificationBadge} />
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -456,7 +550,7 @@ const DashboardScreen = ({ navigation, route }) => {
           </View>
 
           <View style={styles.statusRight}>
-            {isToggleLoading ? (
+            {isToggleLoading || isStatusLoading ? (
               <ActivityIndicator color={THEME.primary} />
             ) : (
               <Switch
@@ -465,6 +559,7 @@ const DashboardScreen = ({ navigation, route }) => {
                 trackColor={{ false: THEME.border, true: `${THEME.primary}40` }}
                 thumbColor={isOnline ? THEME.primary : THEME.placeholder}
                 style={styles.statusSwitch}
+                disabled={isToggleLoading || isStatusLoading}
               />
             )}
           </View>
@@ -479,10 +574,10 @@ const DashboardScreen = ({ navigation, route }) => {
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <Icon name="trips" size={20} color={THEME.primary} />
-              <Text style={styles.statLabel}>Trips Today</Text>
+              <Text style={styles.statLabel}>Requests</Text>
             </View>
-            <Text style={styles.statNumber}>7</Text>
-            <Text style={styles.statChange}>+2 from yesterday</Text>
+            <Text style={styles.statNumber}>{pendingBookings.length}</Text>
+            <Text style={styles.statChange}>Pending</Text>
           </View>
 
           <View style={styles.statCard}>
@@ -499,44 +594,14 @@ const DashboardScreen = ({ navigation, route }) => {
 
         <Animated.View
           style={[
-            styles.actionCardContainer,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() =>
-              navigation.navigate('AvailableTrip', { accessToken })
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.actionCardHeader}>
-              <View style={styles.actionIconContainer}>
-                <Icon name="route" size={28} color="#fff" />
-              </View>
-              <View style={styles.actionTextContainer}>
-                <Text style={styles.actionTitle}>Find New Trips</Text>
-                <Text style={styles.actionSubtitle}>
-                  Browse available loads and submit quotes
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.actionCardFooter}>
-              <Text style={styles.actionCTA}>Start Searching →</Text>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View
-          style={[
             styles.overviewCard,
             { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
           ]}
         >
           <View style={styles.overviewHeader}>
-            <Icon name="history" size={22} color={THEME.primary} />
-            <Text style={styles.overviewTitle}>Recent Bookings</Text>
+            <Icon name="notification" size={22} color={THEME.primary} />
+            {/* --- CHANGED Title --- */}
+            <Text style={styles.overviewTitle}>New Bookings</Text>
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate('BookingHistory', { accessToken })
@@ -546,20 +611,18 @@ const DashboardScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
 
-          {isHistoryLoading ? (
-            <ActivityIndicator
-              color={THEME.primary}
-              style={{ marginVertical: 20 }}
-            />
-          ) : bookingHistory.length > 0 ? (
+          {/* --- CHANGED List Data --- */}
+          {pendingBookings.length > 0 ? (
             <FlatList
-              data={bookingHistory.slice(0, 3)}
-              renderItem={renderHistoryItem}
-              keyExtractor={item => item.id.toString()}
+              data={pendingBookings.slice(0, 3)}
+              renderItem={renderPendingItem}
+              keyExtractor={item => item.request_id.toString()}
               scrollEnabled={false}
             />
           ) : (
-            <Text style={styles.noHistoryText}>No recent bookings found.</Text>
+            <Text style={styles.noHistoryText}>
+              No new booking requests.
+            </Text>
           )}
         </Animated.View>
       </ScrollView>
@@ -598,7 +661,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   greeting: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 2,
@@ -731,58 +794,6 @@ const styles = StyleSheet.create({
     color: THEME.success,
     fontWeight: '500',
   },
-  actionCardContainer: {
-    marginBottom: 20,
-  },
-  actionCard: {
-    backgroundColor: THEME.textPrimary,
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: THEME.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  actionCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  actionIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  actionTextContainer: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 20,
-  },
-  actionCardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
-    paddingTop: 16,
-    alignItems: 'flex-end',
-  },
-  actionCTA: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
   overviewCard: {
     backgroundColor: THEME.surfaceElevated,
     borderRadius: 20,
@@ -868,6 +879,18 @@ const styles = StyleSheet.create({
   status_completed: {
     backgroundColor: `${THEME.success}20`,
     color: THEME.success,
+  },
+  status_active: {
+    backgroundColor: `${THEME.primary}20`,
+    color: THEME.primary,
+  },
+  status_pending: {
+    backgroundColor: `${THEME.warning}20`,
+    color: THEME.warning,
+  },
+  status_confirmed: {
+    backgroundColor: `${THEME.primary}20`,
+    color: THEME.primary,
   },
   sidebarOverlay: {
     flex: 1,

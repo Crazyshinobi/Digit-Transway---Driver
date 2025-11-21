@@ -1,4 +1,4 @@
-package com.digittransway.driver
+package com.digittransway
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

@@ -4,96 +4,82 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator, // <-- Import
+  ActivityIndicator,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient'; // <-- Import
+import LinearGradient from 'react-native-linear-gradient';
 import ModernInput from '../common/ModernInput';
 import { THEME } from '../../themes/colors';
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
-const BankDetailStep = ({
-  formData,
-  setFormData, // <-- Still needed for declaration
-  errors,
-  clearFieldError, // --- NEW PROPS ---
-  onBankDetailsChange, // <-- Replaces setFormData for bank fields
-  onVerifyBankAccount,
-  onEditBankDetails,
-  isVerifyingBank,
-  isBankVerified,
-}) => {
+const BankDetailStep = () => {
+  const {
+    formData,
+    setFormData,
+    errors,
+    clearFieldError,
+    handleBankDetailsChange: onBankDetailsChange, 
+    handleVerifyBankAccount: onVerifyBankAccount, 
+    handleEditBankDetails: onEditBankDetails, 
+    isVerifyingBank,
+    isBankVerified,
+  } = useRegistrationContext();
   const canVerify =
     !isVerifyingBank &&
-    formData.account_number.length > 5 && // Basic check
-    formData.ifsc.length === 11; // Basic check
+    formData.account_number.length > 5 && 
+    formData.ifsc.length === 11; 
 
   return (
     <View style={styles.stepContainer}>
-           {' '}
       <View style={styles.stepHeader}>
-               {' '}
         <View style={styles.iconContainer}>
-                    <Text style={styles.stepIcon}>🏦</Text>       {' '}
+          <Text style={styles.stepIcon}>🏦</Text>
         </View>
-                <Text style={styles.stepTitle}>Banking Information</Text>       {' '}
+        <Text style={styles.stepTitle}>Banking Information</Text>
         <Text style={styles.stepSubtitle}>
-                    Please verify your bank account to proceed        {' '}
+          Please verify your bank account to proceed
         </Text>
-             {' '}
       </View>
-           {' '}
+
       <View style={styles.inputCard}>
-               {' '}
         {isBankVerified ? (
-          // --- VERIFIED STATE ---
+          
           <View style={styles.verifiedContainer}>
-                       {' '}
             <View style={styles.verifiedHeader}>
-                            <Text style={styles.verifiedIcon}>✅</Text>         
-                  <Text style={styles.verifiedTitle}>Account Verified</Text>   
-                       {' '}
+              <Text style={styles.verifiedIcon}>✅</Text>
+              <Text style={styles.verifiedTitle}>Account Verified</Text>
+
               <TouchableOpacity
                 onPress={onEditBankDetails}
                 style={styles.editButton}
               >
-                                <Text style={styles.editButtonText}>Edit</Text> 
-                           {' '}
+                <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
-                         {' '}
             </View>
-                       {' '}
+
             <View style={styles.verifiedRow}>
-                           {' '}
-              <Text style={styles.verifiedLabel}>Account Holder:</Text>         
-                 {' '}
+              <Text style={styles.verifiedLabel}>Account Holder:</Text>
+
               <Text style={styles.verifiedValue}>
-                                {formData.account_holder_name}             {' '}
+                {formData.account_holder_name}
               </Text>
-                         {' '}
             </View>
-                       {' '}
+
             <View style={styles.verifiedRow}>
-                            <Text style={styles.verifiedLabel}>Bank Name:</Text>
-                           {' '}
-              <Text style={styles.verifiedValue}>{formData.bank_name}</Text>   
-                     {' '}
+              <Text style={styles.verifiedLabel}>Bank Name:</Text>
+
+              <Text style={styles.verifiedValue}>{formData.bank_name}</Text>
             </View>
-                       {' '}
+
             <View style={styles.verifiedRow}>
-                           {' '}
-              <Text style={styles.verifiedLabel}>Account Number:</Text>  S      
-                   {' '}
+              <Text style={styles.verifiedLabel}>Account Number:</Text>S
               <Text style={styles.verifiedValue}>
-                                ...{formData.account_number.slice(-4)}         
-                   {' '}
+                ...{formData.account_number.slice(-4)}
               </Text>
-                         {' '}
             </View>
-                     {' '}
           </View>
         ) : (
-          // --- UNVERIFIED STATE ---
+          
           <>
-                       {' '}
             <ModernInput
               placeholder="Account Number"
               value={formData.account_number}
@@ -103,7 +89,7 @@ const BankDetailStep = ({
               error={errors.account_number}
               keyboardType="numeric"
             />
-                       {' '}
+
             <ModernInput
               placeholder="IFSC Code"
               value={formData.ifsc}
@@ -114,13 +100,12 @@ const BankDetailStep = ({
               autoCapitalize="characters"
               maxLength={11}
             />
-                       {' '}
+
             <TouchableOpacity
               onPress={onVerifyBankAccount}
               disabled={!canVerify}
               style={styles.verifyButtonContainer}
             >
-                           {' '}
               <LinearGradient
                 colors={
                   !canVerify
@@ -129,38 +114,31 @@ const BankDetailStep = ({
                 }
                 style={styles.verifyButton}
               >
-                               {' '}
                 {isVerifyingBank ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.verifyButtonText}>Verify Account</Text>
                 )}
-                             {' '}
               </LinearGradient>
-                         {' '}
             </TouchableOpacity>
-                        {/* General Bank Error Message */}           {' '}
+            {/* General Bank Error Message */}
             {errors.bank_account && (
               <Text style={styles.generalErrorText}>{errors.bank_account}</Text>
             )}
-                     {' '}
           </>
         )}
-               {' '}
+
         <View style={styles.securityNote}>
-                    <Text style={styles.securityIcon}>🔒</Text>         {' '}
+          <Text style={styles.securityIcon}>🔒</Text>
           <Text style={styles.securityText}>
-                        Your banking information is encrypted and secure        
-             {' '}
+            Your banking information is encrypted and secure
           </Text>
-                 {' '}
         </View>
-               {' '}
-        {/* Declaration remains unchanged, but is only shown if verified */}   
-           {' '}
+
+        {/* Declaration remains unchanged, but is only shown if verified */}
+
         {isBankVerified && (
           <View style={styles.declarationCard}>
-                       {' '}
             <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => {
@@ -172,41 +150,34 @@ const BankDetailStep = ({
               }}
               activeOpacity={0.7}
             >
-                           {' '}
               <View
                 style={[
                   styles.modernCheckbox,
                   formData.declaration && styles.checkedCheckbox,
                 ]}
               >
-                               {' '}
                 {formData.declaration && (
                   <Text style={styles.checkIcon}>✓</Text>
                 )}
-                             {' '}
               </View>
-                           {' '}
+
               <Text style={styles.declarationText}>
-                                I declare that all information provided is
-                accurate and I agree to the terms and conditions.              {' '}
+                I declare that all information provided is accurate and I agree
+                to the terms and conditions.
               </Text>
-                         {' '}
             </TouchableOpacity>
-                       {' '}
+
             {errors.declaration && (
               <Text style={styles.errorText}>{errors.declaration}</Text>
             )}
-                     {' '}
           </View>
         )}
-             {' '}
       </View>
-         {' '}
     </View>
   );
 };
 
-// --- ADD NEW STYLES ---
+
 const styles = StyleSheet.create({
   stepContainer: {
     flex: 1,
@@ -292,7 +263,7 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16, // Reduced margin
+    marginBottom: 16, 
   },
   modernCheckbox: {
     width: 24,
@@ -333,7 +304,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
     fontWeight: '500',
-  }, // --- NEW VERIFY BUTTON STYLES ---
+  }, 
   verifyButtonContainer: {
     marginTop: 16,
   },
@@ -353,7 +324,7 @@ const styles = StyleSheet.create({
     color: THEME.textOnPrimary,
     fontSize: 15,
     fontWeight: '700',
-  }, // --- NEW VERIFIED STATE STYLES ---
+  }, 
   verifiedContainer: {
     backgroundColor: THEME.successSurface,
     borderRadius: 16,

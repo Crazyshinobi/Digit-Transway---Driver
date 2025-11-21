@@ -30,12 +30,12 @@ const LoginScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState('');
 
-  // Rate limiting states
+  
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [timerRef, setTimerRef] = useState(null);
 
-  // Animation values
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -46,7 +46,7 @@ const LoginScreen = ({ navigation }) => {
     }).start();
   }, []);
 
-  // Cleanup timer on unmount
+  
   useEffect(() => {
     return () => {
       if (timerRef) {
@@ -56,7 +56,7 @@ const LoginScreen = ({ navigation }) => {
   }, [timerRef]);
 
   useEffect(() => {
-    // Get the app hash
+    
     getHash()
       .then(hash => {
         console.log('Your App Hash is:', hash);
@@ -64,7 +64,7 @@ const LoginScreen = ({ navigation }) => {
       .catch(console.log);
   }, []);
 
-  // Start countdown timer
+  
   const startCountdown = (seconds = 60) => {
     setIsRateLimited(true);
     setCountdown(seconds);
@@ -234,7 +234,7 @@ const LoginScreen = ({ navigation }) => {
 
           <View style={styles.footerContainer}>
             <Text style={styles.footerText}>
-              Don't have an account?{' '}
+              Don't have an account?
               <Text
                 style={styles.footerLink}
                 onPress={() => navigation?.navigate('RoleSelection')}
@@ -243,8 +243,8 @@ const LoginScreen = ({ navigation }) => {
               </Text>
             </Text>
             <Text style={[styles.footerText, { fontSize: 12, marginTop: 8 }]}>
-              By continuing, you agree to our{' '}
-              <Text style={styles.footerLink}>Terms of Service</Text> and{' '}
+              By continuing, you agree to our
+              <Text style={styles.footerLink}>Terms of Service</Text> and
               <Text style={styles.footerLink}>Privacy Policy</Text>
             </Text>
           </View>
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     backgroundColor: '#FFFFFF',
-    // padding: 15,
+    
     borderRadius: 20,
     marginBottom: 20,
     shadowColor: '#000',

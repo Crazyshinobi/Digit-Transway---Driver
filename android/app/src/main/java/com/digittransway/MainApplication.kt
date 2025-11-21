@@ -1,7 +1,7 @@
-package com.digittransway.driver
+package com.digittransway
 
 import android.app.Application
-import com.digittransway.driver.BuildConfig
+import com.digittransway.BuildConfig
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost

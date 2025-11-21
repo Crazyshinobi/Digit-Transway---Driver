@@ -29,7 +29,6 @@ const Icon = ({ name, size, style }) => {
   return <Text style={[{ fontSize: size }, style]}>{getIcon()}</Text>;
 };
 
-// Mock data for available trips
 const mockTrips = [
   { id: '1', from: 'Noida Sec 62', to: 'Gurgaon Sec 29', distance: '45 km', vehicle: 'Mini Truck', payout: 'Quote Now' },
   { id: '2', from: 'Delhi Cantt', to: 'Faridabad', distance: '35 km', vehicle: 'Small Truck', payout: 'Quote Now' },
@@ -61,7 +60,6 @@ const AvailableTripScreen = ({ navigation, route }) => {
     } else {
       setIsAutoSearch(false);
       Alert.alert("Auto-Search Stopped", "You will no longer be automatically matched with trips.");
-      // You could also call an API to stop the auto-search on the backend here.
     }
   };
   
@@ -76,7 +74,6 @@ const AvailableTripScreen = ({ navigation, route }) => {
     try {
         console.log("Starting auto-search...");
         
-        // This is a fire-and-forget API, we don't need to handle the response content
         await axios.post(`${API_URL}/api/truck-booking/create-auto-search`, {}, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });

@@ -6,97 +6,124 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { THEME } from '../../themes/colors'; 
+import { THEME } from '../../themes/colors';
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
-const Icon = ({ name, size = 60, color = THEME.textSecondary, style }) => {
-  const getIcon = () => {
-    switch (name) {
-      case 'shield':
-        return '🛡️'; // Or use react-native-vector-icons if preferred
-      default:
-        return '';
-    }
-  };
-  return <Text style={[{ fontSize: size, color }, style]}>{getIcon()}</Text>;
+const Icon = ({ size = 60, color = THEME.textSecondary, style }) => {
+  return <Text style={[{ fontSize: size, color }, style]}>🛡️</Text>;
 };
 
-const AadhaarStep = ({ isVerified, onVerifyPress, isLoading }) => {
+const AadhaarStep = () => {
+  const {
+    isVerified,
+    handleInitializeAadhaar: onVerifyPress,
+    isAadhaarLoading: isLoading,
+  } = useRegistrationContext();
+
+  const isButtonDisabled = isLoading || isVerified;
+
   return (
-    <View style={styles.card}>
-      {/* Status Container (Optional, could simplify) */}
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>Verification Status:</Text>
-        <View
-          style={[
-            styles.statusBadge,
-            {
-              backgroundColor: isVerified
-                ? `${THEME.success}1A`
-                : `${THEME.warning}1A`,
-            },
-          ]}
-        >
+    <View style={styles.container}>
+      {/* Information Text (Replaced Manual Info) */}
+      <Text style={styles.autoVerifyInfoText}>
+        To proceed with registration, please complete your mandatory KYC using
+        Aadhaar's secure auto-verification service powered by DigiLocker.
+      </Text>
+
+      {/* Verification Card (Always active) */}
+      <View style={styles.card}>
+        {/* Status Container */}
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusLabel}>Verification Status:</Text>
           <View
             style={[
-              styles.statusDot,
-              { backgroundColor: isVerified ? THEME.success : THEME.warning },
-            ]}
-          />
-          <Text
-            style={[
-              styles.statusText,
-              { color: isVerified ? THEME.success : THEME.warning },
+              styles.statusBadge,
+              {
+                backgroundColor: isVerified
+                  ? `${THEME.success}1A`
+                  : `${THEME.warning}1A`,
+              },
             ]}
           >
-            {isVerified ? 'Verified' : 'Not Verified'}
-          </Text>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: isVerified ? THEME.success : THEME.warning },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                { color: isVerified ? THEME.success : THEME.warning },
+              ]}
+            >
+              {isVerified ? 'Verified' : 'Required'}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <Icon name="shield" style={styles.shieldIcon} />
-      <Text style={styles.cardTitle}>Verify with Aadhaar</Text>
-      <Text style={styles.cardSubtitle}>
-        Complete your KYC process securely using DigiLocker. This is required to
-        proceed.
-      </Text>
-      <TouchableOpacity
-        style={[
-          styles.verifyButton,
-          (isLoading || isVerified) && styles.disabledButton,
-        ]}
-        onPress={onVerifyPress}
-        disabled={isLoading || isVerified}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <Text style={styles.verifyButtonText}>
-            {isVerified ? 'Aadhaar Verified' : 'Verify Now'}
-          </Text>
-        )}
-      </TouchableOpacity>
+        <Icon style={styles.shieldIcon} />
+
+        <Text style={styles.cardTitle}>Auto-Verify with Aadhaar</Text>
+
+        <Text style={styles.cardSubtitle}>
+          This process securely fetches your details from DigiLocker and
+          auto-fills your profile.
+        </Text>
+
+        <TouchableOpacity
+          style={[
+            styles.verifyButton,
+            isButtonDisabled && styles.disabledButton,
+          ]}
+          onPress={onVerifyPress}
+          disabled={isButtonDisabled}
+          activeOpacity={0.8}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.verifyButtonText}>
+              {isVerified ? 'Aadhaar Verified' : 'Start Verification'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
-// Styles adapted from VerificationScreen and adjusted
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingVertical: 10,
+  },
+  autoVerifyInfoText: {
+    textAlign: 'center',
+    fontSize: 15,
+    color: THEME.textSecondary,
+    marginBottom: 20,
+    fontWeight: '500',
+    paddingHorizontal: 10,
+    lineHeight: 22,
+  },
   card: {
     backgroundColor: THEME.surface,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: THEME.shadowLight,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 5,
-    marginTop: 20, // Add some top margin
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: THEME.borderLight,
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start', // Position top-left
+    alignSelf: 'flex-start',
     marginBottom: 24,
   },
   statusLabel: {
@@ -124,13 +151,14 @@ const styles = StyleSheet.create({
   },
   shieldIcon: {
     marginBottom: 16,
-    color: THEME.primary, // Make icon primary color
+    color: THEME.primary,
   },
   cardTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: THEME.textPrimary,
     marginBottom: 8,
+    textAlign: 'center',
   },
   cardSubtitle: {
     fontSize: 15,
@@ -141,19 +169,21 @@ const styles = StyleSheet.create({
   },
   verifyButton: {
     backgroundColor: THEME.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     width: '100%',
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   disabledButton: {
-    backgroundColor: THEME.grey, // Use a grey color for disabled state
+    backgroundColor: THEME.grey,
     opacity: 0.7,
   },
   verifyButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });
 

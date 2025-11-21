@@ -1,4 +1,3 @@
-// src/components/common/OTPInput.js
 import React, { useRef, useEffect, useState } from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { THEME } from '../../themes/colors';
@@ -14,12 +13,10 @@ const OTPInput = ({
   const inputRefs = useRef([]);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
-  // Initialize refs array
   useEffect(() => {
     inputRefs.current = inputRefs.current.slice(0, maxLength);
   }, [maxLength]);
 
-  // Auto focus first input when component mounts
   useEffect(() => {
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
@@ -27,21 +24,17 @@ const OTPInput = ({
   }, []);
 
   const handleTextChange = (text, index) => {
-    // Clear any errors when user starts typing
     if (clearError) {
       clearError();
     }
 
-    // Only allow numeric input
     const numericText = text.replace(/[^0-9]/g, '');
 
     if (numericText.length > 1) {
-      // Handle paste - distribute digits across inputs
       const digits = numericText.slice(0, maxLength).split('');
       const newCode = digits.join('');
       setCode(newCode);
 
-      // Focus on the last filled input or next empty input
       const nextIndex = Math.min(digits.length, maxLength - 1);
       setTimeout(() => {
         if (inputRefs.current[nextIndex]) {
@@ -56,14 +49,12 @@ const OTPInput = ({
       return;
     }
 
-    // Handle single digit input
     const codeArray = code.split('');
     codeArray[index] = numericText;
     const newCode = codeArray.join('');
 
     setCode(newCode);
 
-    // Auto-focus next input if digit was entered
     if (numericText && index < maxLength - 1) {
       setTimeout(() => {
         if (inputRefs.current[index + 1]) {
@@ -73,7 +64,6 @@ const OTPInput = ({
       }, 0);
     }
 
-    // Check if OTP is complete
     if (newCode.length === maxLength && onComplete) {
       setTimeout(() => {
         onComplete(newCode);
@@ -88,11 +78,9 @@ const OTPInput = ({
       const codeArray = code.split('');
 
       if (codeArray[index]) {
-        // Clear current digit
         codeArray[index] = '';
         setCode(codeArray.join(''));
       } else if (index > 0) {
-        // Move to previous input and clear it
         codeArray[index - 1] = '';
         setCode(codeArray.join(''));
         setTimeout(() => {
@@ -111,7 +99,6 @@ const OTPInput = ({
 
   const handleFocus = index => {
     setFocusedIndex(index);
-    // Select all text when focused for better UX
     setTimeout(() => {
       if (inputRefs.current[index]) {
         inputRefs.current[index].setSelection?.(0, 1);

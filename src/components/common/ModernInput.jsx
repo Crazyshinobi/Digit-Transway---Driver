@@ -13,12 +13,10 @@ const ModernInput = ({
   const [isFocused, setIsFocused] = useState(false);
   const [hasValue, setHasValue] = useState(false);
   
-  // Animation values
   const focusAnimation = useRef(new Animated.Value(0)).current;
   const shakeAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animate on focus/blur
     Animated.timing(focusAnimation, {
       toValue: isFocused ? 1 : 0,
       duration: 200,
@@ -27,7 +25,6 @@ const ModernInput = ({
   }, [isFocused]);
 
   useEffect(() => {
-    // Shake animation for errors
     if (error) {
       Animated.sequence([
         Animated.timing(shakeAnimation, {
@@ -67,19 +64,16 @@ const ModernInput = ({
     props.onChangeText?.(text);
   };
 
-  // Animated border color
   const borderColor = focusAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: [error ? THEME.error : THEME.border, error ? THEME.error : THEME.primary],
   });
 
-  // Animated background color
   const backgroundColor = focusAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: [THEME.surface, THEME.surface],
   });
 
-  // Animated shadow opacity
   const shadowOpacity = focusAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: [0.05, 0.15],
@@ -105,7 +99,6 @@ const ModernInput = ({
             backgroundColor,
             transform: [{ translateX: shakeAnimation }],
           },
-          // Dynamic shadow
           {
             shadowOpacity,
             shadowColor: isFocused ? THEME.primary : THEME.shadowLight,
@@ -188,12 +181,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     minHeight: 56,
     paddingHorizontal: 16,
-    // Base shadow
     shadowColor: THEME.shadowLight,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,
     elevation: 4,
-    // Smooth transitions
     transform: [{ scale: 1 }],
   },
 

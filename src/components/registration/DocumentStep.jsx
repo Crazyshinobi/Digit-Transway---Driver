@@ -1,24 +1,22 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
+  Alert, 
 } from 'react-native';
 import ModernInput from '../common/ModernInput';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { THEME } from '../../themes/colors';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker'; 
+import RadioButton from '../common/RadioButton'; 
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
-const DocumentStep = ({
-  formData,
-  setFormData,
-  errors,
-  clearFieldError,
-  pincodeLoading,
-}) => {
-  // ... (imageOptions, handleImageResponse, handleImagePick functions are unchanged) ...
+const DocumentStep = () => {
+  const { formData, setFormData, errors, clearFieldError, pincodeLoading } =
+    useRegistrationContext();
+  
   const imageOptions = {
     mediaType: 'photo',
     includeBase64: false,
@@ -27,49 +25,105 @@ const DocumentStep = ({
     quality: 0.8,
   };
 
-  const handleImageResponse = response => {
-    if (response.didCancel) {
-      console.log('User cancelled image picker');
-    } else if (response.error) {
+  const createResponseHandler = useCallback(
+    imageKey => response => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.error) {
+        Alert.alert(
+          'Error',
+          `ImagePicker Error: ${response.errorMessage || response.error}`,
+        );
+      } else if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        setFormData(prev => ({
+          ...prev,
+          [imageKey]: {
+            uri: asset.uri,
+            type: asset.type,
+            fileName: asset.fileName || `${imageKey}_${Date.now()}.jpg`,
+          },
+        }));
+        clearFieldError(imageKey);
+      }
+    },
+    [setFormData, clearFieldError],
+  );
+
+  const handleImagePick = useCallback(
+    (imageKey, title) => {
+      const responseHandler = createResponseHandler(imageKey);
       Alert.alert(
-        'Error',
-        `ImagePicker Error: ${response.errorMessage || response.error}`,
+        title || 'Select Image Source',
+        'Choose an option to upload your document.',
+        [
+          {
+            text: 'Take Photo',
+            onPress: () => launchCamera(imageOptions, responseHandler),
+          },
+          {
+            text: 'Choose from Gallery',
+            onPress: () => launchImageLibrary(imageOptions, responseHandler),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true },
       );
-    } else if (response.assets && response.assets[0]) {
-      const asset = response.assets[0];
+    },
+    [createResponseHandler],
+  ); 
+
+  const pickPanImage = useCallback(
+    () => handleImagePick('pan_image', 'Upload PAN Image'),
+    [handleImagePick],
+  );
+  const pickRcImage = useCallback(
+    () => handleImagePick('rc_image', 'Upload RC Image'),
+    [handleImagePick],
+  );
+  const pickDlImage = useCallback(
+    () => handleImagePick('dl_image', 'Upload DL Image'),
+    [handleImagePick],
+  ); 
+
+  const handleDlNumberChange = useCallback(
+    text => {
       setFormData(prev => ({
         ...prev,
-        aadhaar_front: {
-          uri: asset.uri,
-          type: asset.type,
-          fileName: asset.fileName || `aadhaar_front_${Date.now()}.jpg`,
-        },
+        [prev.dl_manual ? 'dl_number_manual' : 'dl_number']: text,
       }));
-      clearFieldError('aadhaar_front');
-    }
-  };
+      clearFieldError('dl_number');
+    },
+    [setFormData, clearFieldError],
+  );
 
-  const handleImagePick = () => {
-    Alert.alert(
-      'Select Image Source',
-      'Choose an option to upload your document.',
-      [
-        {
-          text: 'Take Photo',
-          onPress: () => launchCamera(imageOptions, handleImageResponse),
-        },
-        {
-          text: 'Choose from Gallery',
-          onPress: () => launchImageLibrary(imageOptions, handleImageResponse),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true },
-    );
-  };
+  const handleRcModeChange = useCallback(
+    isManual => {
+      setFormData(prev => ({ ...prev, rc_manual: isManual }));
+    },
+    [setFormData],
+  );
+
+  const handleDlModeChange = useCallback(
+    isManual => {
+      setFormData(prev => ({ ...prev, dl_manual: isManual }));
+    },
+    [setFormData],
+  );
+
+  const handleRcNumberChange = useCallback(
+    text => {
+      setFormData(prev => ({
+        ...prev,
+        [prev.rc_manual ? 'rc_number_manual' : 'rc_number']: text,
+      }));
+      clearFieldError('rc_number');
+    },
+    [setFormData, clearFieldError],
+  );
 
   return (
     <View style={styles.stepContainer}>
@@ -80,12 +134,9 @@ const DocumentStep = ({
         <Text style={styles.stepTitle}>Documents & Address</Text>
         <Text style={styles.stepSubtitle}>Verify your identity securely</Text>
       </View>
-
       <View style={styles.inputCard}>
+        {/* --- PAN SECTION --- */}
         <Text style={styles.sectionLabel}>Identity Documents</Text>
-
-        {/* --- AADHAAR NUMBER INPUT REMOVED --- */}
-
         <ModernInput
           placeholder="PAN Number (ABCDE1234F)"
           value={formData.pan_number}
@@ -97,62 +148,77 @@ const DocumentStep = ({
           autoCapitalize="characters"
           maxLength={10}
         />
-
+        <UploadButton
+          title="Upload PAN Image"
+          file={formData.pan_image}
+          error={errors.pan_image}
+          onPress={pickPanImage}
+        />
+        {/* --- RC SECTION --- */}
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>
+          Vehicle RC Details
+        </Text>
+        <View style={styles.radioRow}>
+          <RadioButton
+            label="Auto-Verify"
+            selected={!formData.rc_manual}
+            onSelect={() => handleRcModeChange(false)}
+          />
+          <RadioButton
+            label="Manual Upload"
+            selected={formData.rc_manual}
+            onSelect={() => handleRcModeChange(true)}
+          />
+        </View>
         <ModernInput
           placeholder="Vehicle RC Number"
-          autoCapitalize="characters"
-          value={formData.rc_number}
-          onChangeText={text => {
-            setFormData(prev => ({ ...prev, rc_number: text }));
-            clearFieldError('rc_number');
-          }}
+          value={
+            formData.rc_manual ? formData.rc_number_manual : formData.rc_number
+          }
+          onChangeText={handleRcNumberChange}
           error={errors.rc_number}
         />
-
-        {/* --- Aadhaar Front Upload Button (Unchanged) --- */}
-        <TouchableOpacity
-          style={[
-            styles.uploadButton,
-            errors.aadhaar_front && styles.uploadError,
-          ]}
-          onPress={handleImagePick}
-          activeOpacity={0.7}
-        >
-          <View style={styles.uploadIcon}>
-            <Text style={styles.uploadIconText}>
-              {formData.aadhaar_front ? '✓' : '📷'}
-            </Text>
-          </View>
-          <View style={styles.uploadContent}>
-            <Text
-              style={[
-                styles.uploadTitle,
-                formData.aadhaar_front && { color: THEME.success },
-              ]}
-            >
-              {formData.aadhaar_front
-                ? 'Aadhaar Uploaded Successfully'
-                : 'Upload Aadhaar Front*'}
-            </Text>
-            <Text
-              style={styles.uploadSubtitle}
-              numberOfLines={1}
-              ellipsizeMode="middle"
-            >
-              {formData.aadhaar_front?.fileName || 'JPG or PNG, max 5MB'}
-            </Text>
-          </View>
-          <Text style={styles.chevronIcon}>›</Text>
-        </TouchableOpacity>
-        {errors.aadhaar_front && (
-          <Text style={styles.errorText}>{errors.aadhaar_front}</Text>
-        )}
-
+        <UploadButton
+          title="Upload RC Image"
+          file={formData.rc_image}
+          error={errors.rc_image}
+          onPress={pickRcImage}
+        />
+        {/* --- DL SECTION --- */}
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>
+          Driving License Details
+        </Text>
+        <View style={styles.radioRow}>
+          <RadioButton
+            label="Auto-Verify"
+            selected={!formData.dl_manual}
+            onSelect={() => handleDlModeChange(false)}
+          />
+          <RadioButton
+            label="Manual Upload"
+            selected={formData.dl_manual}
+            onSelect={() => handleDlModeChange(true)}
+          />
+        </View>
+        <ModernInput
+          placeholder="Driving License Number"
+          value={
+            formData.dl_manual ? formData.dl_number_manual : formData.dl_number
+          }
+          onChangeText={handleDlNumberChange}
+          error={errors.dl_number}
+          autoCapitalize="characters"
+        />
+        <UploadButton
+          title="Upload DL Image"
+          file={formData.dl_image}
+          error={errors.dl_image}
+          onPress={pickDlImage}
+        />
         {/* --- ADDRESS SECTION (Unchanged) --- */}
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>
           Address Information
         </Text>
-
         <ModernInput
           placeholder="Complete Address"
           value={formData.full_address}
@@ -165,7 +231,6 @@ const DocumentStep = ({
           numberOfLines={3}
           inputStyle={{ minHeight: 80, textAlignVertical: 'top' }}
         />
-
         <View style={styles.rowContainer}>
           <View style={styles.halfWidth}>
             <ModernInput
@@ -188,7 +253,6 @@ const DocumentStep = ({
             />
           </View>
         </View>
-
         <View style={styles.rowContainer}>
           <View style={[styles.halfWidth, styles.pincodeContainer]}>
             <ModernInput
@@ -220,8 +284,6 @@ const DocumentStep = ({
             />
           </View>
         </View>
-
-        {/* --- Checkbox (Unchanged) --- */}
         <TouchableOpacity
           style={styles.checkboxContainer}
           onPress={() =>
@@ -246,13 +308,37 @@ const DocumentStep = ({
   );
 };
 
-// --- Styles (Unchanged, but disabledInputBackground is used) ---
+
+const UploadButton = ({ title, file, error, onPress }) => (
+  <>
+    <TouchableOpacity
+      style={[styles.uploadButton, error && styles.uploadError]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.uploadIcon}>
+        <Text style={styles.uploadIconText}>{file ? '✓' : '📷'}</Text>
+      </View>
+      <View style={styles.uploadContent}>
+        <Text style={[styles.uploadTitle, file && { color: THEME.success }]}>
+          {file ? `${title.split(' ')[1]} Uploaded` : `${title}*`}
+        </Text>
+        <Text
+          style={styles.uploadSubtitle}
+          numberOfLines={1}
+          ellipsizeMode="middle"
+        >
+          {file?.fileName || 'JPG or PNG, max 5MB'}
+        </Text>
+      </View>
+      <Text style={styles.chevronIcon}>›</Text>
+    </TouchableOpacity>
+    {error && <Text style={styles.errorText}>{error}</Text>}
+  </>
+);
+
+
 const styles = StyleSheet.create({
-  // ... (all other styles)
-  disabledInputBackground: {
-    backgroundColor: THEME.greyLight || '#f0f0f0', // Provide a fallback color
-  },
-  // ... (all other styles)
   stepContainer: {
     flex: 1,
   },
@@ -312,6 +398,66 @@ const styles = StyleSheet.create({
     color: THEME.textPrimary,
     marginBottom: 16,
   },
+  rowContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 0,
+  },
+  halfWidth: {
+    flex: 1,
+  },
+  pincodeContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  pincodeSpinner: {
+    position: 'absolute',
+    right: 15,
+    top: '50%',
+    marginTop: -12,
+  },
+  disabledInputBackground: {
+    backgroundColor: THEME.greyLight || '#f0f0f0',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modernCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: THEME.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkedCheckbox: {
+    backgroundColor: THEME.primary,
+    borderColor: THEME.primary,
+  },
+  checkIcon: {
+    color: THEME.textOnPrimary,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  checkboxText: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.textPrimary,
+    lineHeight: 20,
+  },
+  errorText: {
+    color: THEME.error,
+    fontSize: 13,
+    marginTop: -12, 
+    marginBottom: 8,
+    paddingLeft: 4,
+  }, 
+
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,61 +503,12 @@ const styles = StyleSheet.create({
     color: THEME.textSecondary,
     fontWeight: 'bold',
   },
-  rowContainer: {
+  radioRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 0,
-  },
-  halfWidth: {
-    flex: 1,
-  },
-  pincodeContainer: {
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  pincodeSpinner: {
-    position: 'absolute',
-    right: 15,
-    top: '50%',
-    marginTop: -12, // Adjust based on input height if needed
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  modernCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: THEME.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  checkedCheckbox: {
-    backgroundColor: THEME.primary,
-    borderColor: THEME.primary,
-  },
-  checkIcon: {
-    color: THEME.textOnPrimary,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  checkboxText: {
-    flex: 1,
-    fontSize: 14,
-    color: THEME.textPrimary,
-    lineHeight: 20,
-  },
-  errorText: {
-    color: THEME.error,
-    fontSize: 13,
-    marginTop: -8,
-    marginBottom: 8,
-    paddingLeft: 4,
+    justifyContent: 'flex-start',
+    gap: 24,
+    marginBottom: 16,
+    marginLeft: 8,
   },
 });
 

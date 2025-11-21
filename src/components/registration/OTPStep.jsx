@@ -8,19 +8,21 @@ import {
 } from 'react-native';
 import OTPInput from '../common/OTPInput';
 import { THEME } from '../../themes/colors';
+import { useRegistrationContext } from '../../context/RegistrationContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isSmallScreen = screenWidth < 375 || screenHeight < 667;
 
-const OTPStep = ({
-  otp,
-  setOtp,
-  phoneNumber,
-  formatPhoneNumber,
-  errors,
-  clearFieldError,
-  onChangeNumber,
-}) => {
+const OTPStep = () => {
+  const {
+    otp,
+    setOtp,
+    phoneNumber,
+    formatPhoneNumber,
+    errors,
+    clearFieldError,
+    onChangeNumber,
+  } = useRegistrationContext();
   return (
     <View style={styles.stepContainer}>
       <View
@@ -59,7 +61,6 @@ const OTPStep = ({
           <OTPInput
             code={otp}
             setCode={setOtp}
-            // --- MODIFIED: Changed maxLength to 4 ---
             maxLength={4}
             error={!!errors.otp}
             clearError={() => clearFieldError('otp')}
@@ -84,7 +85,7 @@ const OTPStep = ({
           <Text
             style={[styles.resendText, isSmallScreen && styles.resendTextSmall]}
           >
-            Didn't receive the code?{' '}
+            Didn't receive the code?
           </Text>
           <Text
             style={[styles.resendLink, isSmallScreen && styles.resendLinkSmall]}
@@ -100,7 +101,7 @@ const OTPStep = ({
 const styles = StyleSheet.create({
   stepContainer: {
     flex: 1,
-    paddingHorizontal: 4, 
+    paddingHorizontal: 4,
   },
   stepHeader: {
     alignItems: 'center',
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 24,
     paddingHorizontal: 8,
-    flexWrap: 'wrap', // Allow text to wrap on very small screens
+    flexWrap: 'wrap',
   },
   resendContainerSmall: {
     paddingTop: 18,
