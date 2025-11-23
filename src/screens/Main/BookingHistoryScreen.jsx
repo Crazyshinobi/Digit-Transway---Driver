@@ -8,14 +8,17 @@ import {
   ActivityIndicator,
   StatusBar,
   Alert,
+  Linking,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../../themes/colors';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const API_URL = 'http://digittransway.com'; 
+const API_URL = 'http://digittransway.com';
 
 const Icon = ({ name, size = 24, color, style }) => {
   const getIcon = () => {
@@ -320,31 +323,49 @@ const BookingHistoryScreen = ({ navigation, route }) => {
       {activeTab === 'pending' ? (
         <View style={styles.actionContainer}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton]}
-            onPress={() => handleRequestAction(item.request_id, 'reject')}
-            disabled={processingId === item.request_id}
+            onPress={() => {Linking.openURL(`tel:${item?.user?.contact_number}`)
+          console.log('Calling', item?.user?.contact_number)}}
+            style={{ paddingRight: 10 }}
           >
-            {processingId === item.request_id ? (
-              <ActivityIndicator size="small" color={THEME.error} />
-            ) : (
-              <Text style={[styles.actionButtonText, styles.rejectButtonText]}>
-                Reject
-              </Text>
-            )}
+            <Image
+              source={require('../../assets/icons/phone-call.png')} // <-- your image
+              style={{ width: 30, height: 30,  }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.acceptButton]}
-            onPress={() => handleRequestAction(item.request_id, 'accept')}
-            disabled={processingId === item.request_id}
-          >
-            {processingId === item.request_id ? (
-              <ActivityIndicator size="small" color={THEME.success} />
-            ) : (
-              <Text style={[styles.actionButtonText, styles.acceptButtonText]}>
-                Accept
-              </Text>
-            )}
-          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.rejectButton]}
+              onPress={() => handleRequestAction(item.request_id, 'reject')}
+              disabled={processingId === item.request_id}
+            >
+              {processingId === item.request_id ? (
+                <ActivityIndicator size="small" color={THEME.error} />
+              ) : (
+                <Text
+                  style={[styles.actionButtonText, styles.rejectButtonText]}
+                >
+                  Reject
+                </Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.acceptButton]}
+              onPress={() => handleRequestAction(item.request_id, 'accept')}
+              disabled={processingId === item.request_id}
+            >
+              {processingId === item.request_id ? (
+                <ActivityIndicator size="small" color={THEME.success} />
+              ) : (
+                <Text
+                  style={[styles.actionButtonText, styles.acceptButtonText]}
+                >
+                  Accept
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <View style={styles.cardFooter}>
@@ -637,13 +658,14 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between', // <-- FIX
     alignItems: 'center',
     marginTop: 12,
     borderTopWidth: 1,
     borderTopColor: THEME.borderLight,
     paddingTop: 12,
   },
+
   actionButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -674,17 +696,16 @@ const styles = StyleSheet.create({
   completeButtonText: {
     color: THEME.success,
   },
-  
+
   buttonGroupContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 0, 
-    flexWrap: 'nowrap', 
+    flexShrink: 0,
+    flexWrap: 'nowrap',
   },
   trackButton: {
-    
-    height: 36, 
-    width: 36, 
+    height: 36,
+    width: 36,
     borderRadius: 8,
     marginLeft: 6,
     alignItems: 'center',
@@ -692,7 +713,6 @@ const styles = StyleSheet.create({
     backgroundColor: `${THEME.primary}1A`,
   },
   pickupTrackButton: {
-    
     marginLeft: 8,
   },
   dropTrackButton: {
@@ -706,18 +726,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: THEME.primary,
   },
-  
+
   actionButton: {
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
-    marginLeft: 6, 
-    minWidth: 70, 
+    marginLeft: 6,
+    minWidth: 70,
     alignItems: 'center',
-    backgroundColor: `${THEME.success}1A`, 
+    backgroundColor: `${THEME.success}1A`,
   },
   actionButtonText: {
-    fontSize: 11, 
+    fontSize: 11,
     fontWeight: 'bold',
   },
   completeButtonText: {

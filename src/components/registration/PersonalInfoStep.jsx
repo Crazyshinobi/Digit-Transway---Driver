@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  Button,
 } from 'react-native';
 import ModernInput from '../common/ModernInput';
 import RadioButton from '../common/RadioButton';
@@ -32,6 +33,9 @@ const PersonalInfoStep = () => {
     maxWidth: 2000,
     quality: 0.8,
   };
+  const [aadhaarFirst8, setAadhaarFirst8] = useState('');
+  const [aadhaarInput, setAadhaarInput] = useState('');
+  const aadhaarLast4 = (formData.aadhar_number || '').slice(-4);
 
   const createResponseHandler = useCallback(
     imageKey => response => {
@@ -124,13 +128,32 @@ const PersonalInfoStep = () => {
     [setFormData, clearFieldError],
   );
 
-  const handleAadhaarChange = useCallback(
-    text => {
-      setFormData(prev => ({ ...prev, aadhar_number_manual: text }));
-      clearFieldError('aadhar_number');
-    },
-    [setFormData, clearFieldError],
-  );
+  // const handleAadhaarChange = useCallback(
+  //   text => {
+  //     setFormData(prev => ({ ...prev, aadhar_number_manual: text }));
+  //     clearFieldError('aadhar_number');
+  //   },
+  //   [setFormData, clearFieldError],
+  // );
+
+  const handleAadhaarChange = text => {
+    const first8 = text.replace(/\D/g, '').slice(0, 8);
+
+    // Store what user types (for showing in input)
+    setAadhaarInput(first8);
+
+    // Build complete Aadhaar without showing it
+    const last4 = (formData.aadhar_number || '').slice(-4);
+
+    const full12 = first8 + last4;
+
+    setFormData(prev => ({
+      ...prev,
+      aadhar_number: full12,
+    }));
+
+    clearFieldError('aadhar_number');
+  };
 
   const handleGSTChange = useCallback(
     text => {
@@ -194,10 +217,10 @@ const PersonalInfoStep = () => {
         />
 
         <ModernInput
-          placeholder="Aadhaar Number"
-          value={formData.aadhar_number_manual || formData.aadhar_number} 
+          placeholder="First 8-digits of Aadhaar*"
+          value={aadhaarInput}
           onChangeText={handleAadhaarChange}
-          error={errors.aadhar_number}
+          maxLength={8}
           keyboardType="numeric"
         />
 
@@ -298,11 +321,11 @@ const PersonalInfoStep = () => {
         />
         <ModernInput
           placeholder="GST Number"
-          value={formData.gst_number_manual || formData.gst_number} 
+          value={formData.gst_number_manual || formData.gst_number}
           onChangeText={handleGSTChange}
           error={errors.gst_number}
           autoCapitalize="characters"
-          maxLength={15} 
+          maxLength={15}
         />
 
         <TouchableOpacity
@@ -353,7 +376,16 @@ const PersonalInfoStep = () => {
           keyboardType="phone-pad"
           maxLength={10}
         />
+        {/* <Text>{formData}</Text> */}
 
+        {/* <Button
+          title="Next"
+          onPress={() => {
+            console.log('User Input (8 digits):', aadhaarInput);
+            console.log('Full Aadhaar (12 digits):', formData.aadhar_number);
+            console.log('last 4 digits from API:', aadhaarLast4);
+          }}
+        /> */}
         <View style={styles.bottomSpacer} />
       </View>
 

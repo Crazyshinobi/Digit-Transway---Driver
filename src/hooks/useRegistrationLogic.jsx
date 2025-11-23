@@ -27,7 +27,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
   const [verificationUrl, setVerificationUrl] = useState(null);
   const AADHAAR_CALLBACK_URL = 'https://digittransway.com/aadhar-callback';
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
-  const [isBankVerified, setIsBankVerified] = useState(false); 
+  const [isBankVerified, setIsBankVerified] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,7 +36,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
     dob: null,
     gender: '',
     emergency_contact: '',
-    aadhar_number: '', 
+    aadhar_number: '',
     aadhar_number_manual: '',
     pan_number: '',
     rc_number: '',
@@ -47,8 +47,8 @@ export const useRegistrationLogic = ({ route, navigation }) => {
     pincode: '',
     country: 'India',
     same_address: true,
-    aadhaar_front: null, 
-    aadhaar_back: null, 
+    aadhaar_front: null,
+    aadhaar_back: null,
     pan_image: null,
     rc_image: null,
     dl_number: '',
@@ -56,8 +56,8 @@ export const useRegistrationLogic = ({ route, navigation }) => {
     dl_image: null,
     gst_number: '',
     gst_number_manual: '',
-    rc_manual: false, 
-    dl_manual: false, 
+    rc_manual: false,
+    dl_manual: false,
     bank_name: '',
     account_number: '',
     ifsc: '',
@@ -102,7 +102,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
 
   useEffect(() => {
     return () => timerRef && clearInterval(timerRef);
-  }, [timerRef]); 
+  }, [timerRef]);
 
   useEffect(() => {
     const key = route?.params?.user_type_key;
@@ -117,7 +117,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
     }
-  }, [route, navigation]); 
+  }, [route, navigation]);
 
   const formatPhoneNumber = txt =>
     txt.length <= 3
@@ -203,7 +203,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
       { title: 'Documents', subtitle: 'Verify your identity' },
       { title: 'Bank Details', subtitle: 'Complete your setup' },
       { title: 'Vehicle Details', subtitle: 'Add your vehicle information' },
-    ][step - 1]; 
+    ][step - 1];
 
   const sendOTP = async () => {
     setIsLoading(true);
@@ -300,7 +300,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
     console.log('WebView URL Changed:', url);
 
     if (url.startsWith(AADHAAR_CALLBACK_URL)) {
-      setVerificationUrl(null); 
+      setVerificationUrl(null);
 
       const urlParams = new URLSearchParams(url.split('?')[1] || '');
       const status = urlParams.get('status');
@@ -477,13 +477,13 @@ export const useRegistrationLogic = ({ route, navigation }) => {
           const dobString = new Date(value).toISOString().split('T')[0];
           registrationData.append('dob', dobString);
         } else if (key === 'aadhaar_front' && value) {
-          registrationData.append('aadhaar_front', {
+          registrationData.append('aadhar_front', {
             uri: value.uri,
             type: value.type,
             name: value.fileName,
           });
         } else if (key === 'aadhaar_back' && value) {
-          registrationData.append('aadhaar_back', {
+          registrationData.append('aadhar_back', {
             uri: value.uri,
             type: value.type,
             name: value.fileName,
@@ -522,7 +522,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
 
       if (userTypeKey) registrationData.append('user_type_key', userTypeKey);
       registrationData.append('contact_number', phoneNumber);
-
+console.log('Submitting registration with data:', registrationData);
       const res = await axios.post(
         `${API_URL}/api/vendor/auth/complete-registration`,
         registrationData,
@@ -627,10 +627,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
   //digittransway.com/aadhar-callback';
 
   const isStep4ValidPure = () => {
-    //digittransway.com/aadhar-callback';
-    //digittransway.com/aadhar-callback';
-
-    //digittransway.com/aadhar-callback';
+    //digittransway.com/aadhar-callback';;
     const effectiveAadharNumber =
       formData.aadhar_number.trim() || formData.aadhar_number_manual.trim();
 
@@ -641,30 +638,49 @@ export const useRegistrationLogic = ({ route, navigation }) => {
     const isGstValid = !effectiveGstNumber || effectiveGstNumber.length === 15;
 
     return (
-      effectiveAadharNumber && //digittransway.com/aadhar-callback';
-      formData.aadhaar_front &&
-      formData.aadhaar_back &&
+      effectiveAadharNumber.length === 12 && //digittransway.com/aadhar-callback';
+      // formData.aadhaar_front &&
+      // formData.aadhaar_back &&
       isGstValid
     );
   };
-  const isStep5ValidPure = () => {
-    //digittransway.com/aadhar-callback';
-    const effectivePanNumber = formData.pan_number.trim();
-    const effectiveRcNumber = formData.rc_manual
-      ? formData.rc_number_manual.trim()
-      : formData.rc_number.trim();
-    const effectiveDlNumber = formData.dl_manual
-      ? formData.dl_number_manual.trim()
-      : formData.dl_number.trim();
+  // const isStep5ValidPure = () => {
+  //   //digittransway.com/aadhar-callback';
+  //   const effectivePanNumber = formData.pan_number.trim();
+  //   const effectiveRcNumber = formData.rc_manual
+  //     ? formData.rc_number_manual.trim()
+  //     : formData.rc_number.trim();
+  //   const effectiveDlNumber = formData.dl_manual
+  //     ? formData.dl_number_manual.trim()
+  //     : formData.dl_number.trim();
 
-    //digittransway.com/aadhar-callback';
-    if (effectivePanNumber && !formData.pan_image) return false;
-    if (effectiveRcNumber && !formData.rc_image) return false;
-    if (effectiveDlNumber && !formData.dl_image) return false;
+  //   //digittransway.com/aadhar-callback';
+  //   if (effectivePanNumber && !formData.pan_image) return false;
+  //   if (effectiveRcNumber && !formData.rc_image) return false;
+  //   if (effectiveDlNumber && !formData.dl_image) return false;
 
-    //digittransway.com/aadhar-callback';
-    return true;
-  };
+  //   //digittransway.com/aadhar-callback';
+  //   return true;
+  // };
+
+const isStep5ValidPure = () => {
+  const effectivePanNumber = (formData.pan_number || "").trim();
+
+  const effectiveRcNumber = formData.rc_manual
+    ? (formData.rc_number_manual || "").trim()
+    : (formData.rc_number || "").trim();
+
+  const effectiveDlNumber = formData.dl_manual
+    ? (formData.dl_number_manual || "").trim()
+    : (formData.dl_number || "").trim();
+
+  // If nothing is entered in PAN/RC/DL — it's still valid
+  // If something IS entered, we can add optional format validation
+  // But no images required.
+
+  return true; // Step always valid without images
+};
+
 
   const isStep6ValidPure = () => {
     //digittransway.com/aadhar-callback';
@@ -693,10 +709,6 @@ export const useRegistrationLogic = ({ route, navigation }) => {
 
       if (!effectiveAadharNumber)
         e.aadhar_number = 'Aadhaar Number is required (auto or manual entry).';
-      if (!formData.aadhaar_front)
-        e.aadhaar_front = 'Aadhaar front image required';
-      if (!formData.aadhaar_back)
-        e.aadhaar_back = 'Aadhaar back image required';
 
       //digittransway.com/aadhar-callback';
       const effectiveGstNumber =
@@ -715,12 +727,12 @@ export const useRegistrationLogic = ({ route, navigation }) => {
         : formData.dl_number.trim();
 
       //digittransway.com/aadhar-callback';
-      if (effectivePanNumber && !formData.pan_image)
-        e.pan_image = 'PAN image is required if PAN number is entered.';
-      if (effectiveRcNumber && !formData.rc_image)
-        e.rc_image = 'RC image is required if RC number is entered.';
-      if (effectiveDlNumber && !formData.dl_image)
-        e.dl_image = 'DL image is required if DL number is entered.';
+      // if (effectivePanNumber && !formData.pan_image)
+      //   e.pan_image = 'PAN image is required if PAN number is entered.';
+      // if (effectiveRcNumber && !formData.rc_image)
+      //   e.rc_image = 'RC image is required if RC number is entered.';
+      // if (effectiveDlNumber && !formData.dl_image)
+      //   e.dl_image = 'DL image is required if DL number is entered.';
     } else if (step === 6) {
       //digittransway.com/aadhar-callback';
       if (
