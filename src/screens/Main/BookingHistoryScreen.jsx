@@ -17,8 +17,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-const API_URL = 'http://digittransway.com';
+import { API_URL } from '../../config/config';
 
 const Icon = ({ name, size = 24, color, style }) => {
   const getIcon = () => {
@@ -291,7 +290,6 @@ const BookingHistoryScreen = ({ navigation, route }) => {
             )}
           </View>
         )}
-        {/* --- END ADDED --- */}
 
         {item.material && (
           <Text style={styles.detailText}>
@@ -323,20 +321,22 @@ const BookingHistoryScreen = ({ navigation, route }) => {
       {activeTab === 'pending' ? (
         <View style={styles.actionContainer}>
           <TouchableOpacity
-            onPress={() => {Linking.openURL(`tel:${item?.user?.contact_number}`)
-          console.log('Calling', item?.user?.contact_number)}}
-            style={{ paddingRight: 10 }}
+            onPress={() => {
+              Linking.openURL(`tel:${item?.user?.contact_number}`);
+              console.log('Calling', item?.user?.contact_number);
+            }}
+            style={styles.phoneButton}
           >
             <Image
-              source={require('../../assets/icons/phone-call.png')} // <-- your image
-              style={{ width: 30, height: 30,  }}
+              source={require('../../assets/icons/phone-call.png')}
+              style={{ width: 30, height: 30 }}
               resizeMode="contain"
             />
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row' }}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
+              style={[styles.actionButtonSmall, styles.rejectButton]}
               onPress={() => handleRequestAction(item.request_id, 'reject')}
               disabled={processingId === item.request_id}
             >
@@ -344,14 +344,17 @@ const BookingHistoryScreen = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color={THEME.error} />
               ) : (
                 <Text
-                  style={[styles.actionButtonText, styles.rejectButtonText]}
+                  style={[
+                    styles.actionButtonSmallText,
+                    styles.rejectButtonText,
+                  ]}
                 >
                   Reject
                 </Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionButton, styles.acceptButton]}
+              style={[styles.actionButtonSmall, styles.acceptButton]}
               onPress={() => handleRequestAction(item.request_id, 'accept')}
               disabled={processingId === item.request_id}
             >
@@ -359,7 +362,10 @@ const BookingHistoryScreen = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color={THEME.success} />
               ) : (
                 <Text
-                  style={[styles.actionButtonText, styles.acceptButtonText]}
+                  style={[
+                    styles.actionButtonSmallText,
+                    styles.acceptButtonText,
+                  ]}
                 >
                   Accept
                 </Text>
@@ -369,17 +375,24 @@ const BookingHistoryScreen = ({ navigation, route }) => {
         </View>
       ) : (
         <View style={styles.cardFooter}>
-          <Text
-            style={[
-              styles.statusBadge,
-              styles[`status_${item.status || 'pending'}`],
-            ]}
-          >
-            {item.status_label || item.status || 'pending'}
-          </Text>
+          {/* left: status */}
+          <View style={styles.statusContainer}>
+            <Text
+              style={[
+                styles.statusBadge,
+                styles[`status_${item.status || 'pending'}`],
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.status_label === 'BOOKING CONFIRMED'
+                ? 'CONFIRMED'
+                : '' || item.status || 'pending'}
+            </Text>
+          </View>
 
-          {activeTab === 'active' && (
-            <View style={styles.buttonGroupContainer}>
+          {(activeTab === 'active' || activeTab === 'completed') && (
+            <View style={styles.buttonGroupWrapper}>
               {processingId === item.id ? (
                 <ActivityIndicator
                   color={THEME.primary}
@@ -387,7 +400,30 @@ const BookingHistoryScreen = ({ navigation, route }) => {
                   style={styles.cardActionLoader}
                 />
               ) : (
-                <>
+                <View style={styles.buttonGroupContainer}>
+                  {/* Call Driver (vendor contact preferred) */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      const phone =
+                        item.vendor?.contact_number ||
+                        item.user?.contact_number;
+                      if (phone) {
+                        Linking.openURL(`tel:${phone}`);
+                        console.log('Calling', phone);
+                      } else {
+                        Alert.alert('No contact', 'No phone number available.');
+                      }
+                    }}
+                    style={styles.phoneButtonSmall}
+                  >
+                    <Image
+                      source={require('../../assets/icons/phone-call.png')}
+                      style={{ width: 24, height: 24 }}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+
+                  {/* Track pickup (if you want to hide when can_track=false add check) */}
                   <TouchableOpacity
                     style={[styles.trackButton, styles.pickupTrackButton]}
                     onPress={() =>
@@ -397,7 +433,6 @@ const BookingHistoryScreen = ({ navigation, route }) => {
                       })
                     }
                   >
-                    {/* The square style relies on padding and minWidth/minHeight */}
                     <Text style={styles.trackButtonText}>📍</Text>
                   </TouchableOpacity>
 
@@ -413,21 +448,24 @@ const BookingHistoryScreen = ({ navigation, route }) => {
                     <Text style={styles.trackButtonText}>🏁</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.completeButton]}
-                    onPress={() => handleCompleteTrip(item.id)}
-                    disabled={processingId === item.id}
-                  >
-                    <Text
-                      style={[
-                        styles.actionButtonText,
-                        styles.completeButtonText,
-                      ]}
+                  {/* Complete button only makes sense for active; hide/disable on completed */}
+                  {activeTab === 'active' && (
+                    <TouchableOpacity
+                      style={[styles.actionButtonLarge, styles.completeButton]}
+                      onPress={() => handleCompleteTrip(item.id)}
+                      disabled={processingId === item.id}
                     >
-                      Complete
-                    </Text>
-                  </TouchableOpacity>
-                </>
+                      <Text
+                        style={[
+                          styles.actionButtonLargeText,
+                          styles.completeButtonText,
+                        ]}
+                      >
+                        Complete
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
             </View>
           )}
@@ -619,27 +657,72 @@ const styles = StyleSheet.create({
     color: THEME.textSecondary,
     marginBottom: 4,
   },
+
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: THEME.borderLight,
     paddingTop: 12,
     marginTop: 12,
-    flexWrap: 'wrap',
+  },
+  statusContainer: {
+    flexShrink: 0,
+    marginRight: 8,
   },
   statusBadge: {
     fontSize: 12,
     fontWeight: 'bold',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
     overflow: 'hidden',
     textTransform: 'uppercase',
-    flexShrink: 1,
-    marginRight: 8,
+    alignSelf: 'flex-start',
   },
+  buttonGroupWrapper: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  buttonGroupContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  phoneButtonSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    marginLeft: 6,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+
+  trackButton: {
+    height: 36,
+    width: 36,
+    borderRadius: 8,
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${THEME.primary}1A`,
+  },
+  actionButtonLarge: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginLeft: 10,
+    minWidth: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonLargeText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   status_active: {
     backgroundColor: `${THEME.primary}20`,
     color: THEME.primary,
@@ -656,9 +739,10 @@ const styles = StyleSheet.create({
     backgroundColor: `${THEME.primary}20`,
     color: THEME.primary,
   },
+
   actionContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // <-- FIX
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 12,
     borderTopWidth: 1,
@@ -666,23 +750,31 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
 
-  actionButton: {
+  phoneButton: {
+    paddingRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  actionButtonSmall: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 8,
     marginLeft: 8,
     minWidth: 80,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: `${THEME.success}1A`,
+  },
+  actionButtonSmallText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   rejectButton: {
     backgroundColor: `${THEME.error}1A`,
   },
   acceptButton: {
     backgroundColor: `${THEME.success}1A`,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   rejectButtonText: {
     color: THEME.error,
@@ -697,52 +789,17 @@ const styles = StyleSheet.create({
     color: THEME.success,
   },
 
-  buttonGroupContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-    flexWrap: 'nowrap',
-  },
-  trackButton: {
-    height: 36,
-    width: 36,
-    borderRadius: 8,
-    marginLeft: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${THEME.primary}1A`,
-  },
   pickupTrackButton: {
     marginLeft: 8,
   },
   dropTrackButton: {
     backgroundColor: `${THEME.primary}1A`,
   },
-  pickupButtonText: {
-    fontSize: 16,
-    color: THEME.primary,
-  },
-  dropButtonText: {
+  trackButtonText: {
     fontSize: 16,
     color: THEME.primary,
   },
 
-  actionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginLeft: 6,
-    minWidth: 70,
-    alignItems: 'center',
-    backgroundColor: `${THEME.success}1A`,
-  },
-  actionButtonText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  completeButtonText: {
-    color: THEME.success,
-  },
   cardActionLoader: {
     alignSelf: 'flex-end',
   },

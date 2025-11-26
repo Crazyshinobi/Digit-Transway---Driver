@@ -21,9 +21,8 @@ import axios from 'axios';
 import { API_URL } from '../../config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
-import Sound from 'react-native-sound'; 
-import { useIsFocused } from '@react-navigation/native'; 
-
+import Sound from 'react-native-sound';
+import { useIsFocused } from '@react-navigation/native';
 
 Sound.setCategory('Playback');
 
@@ -59,13 +58,14 @@ const Icon = ({ name, size = 24, color, style }) => {
         return '📜';
       case 'verification':
         return '🛡️';
+      case 'payment':
+        return '💵';
       default:
         return '❔';
     }
   };
   return <Text style={[{ fontSize: size, color }, style]}>{getIcon()}</Text>;
 };
-
 
 const SidebarMenu = ({
   isVisible,
@@ -151,6 +151,15 @@ const SidebarMenu = ({
                     </View>
                     <Text style={styles.sidebarMenuText}>Booking History</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sidebarMenuItem}
+                    onPress={() => navigateAndClose('PaymentHistoryScreen')}
+                  >
+                    <View style={styles.menuIconContainer}>
+                      <Icon name="payment" size={20} color={THEME.primary} />
+                    </View>
+                    <Text style={styles.sidebarMenuText}>Payment History</Text>
+                  </TouchableOpacity>
                 </View>
 
                 <View style={styles.sidebarFooter}>
@@ -183,40 +192,49 @@ const SidebarMenu = ({
 };
 
 const DashboardScreen = ({ navigation, route }) => {
-  const isFocused = useIsFocused(); 
+  const isFocused = useIsFocused();
+
+  // Separate states for driver online and part-load availability
   const [isOnline, setIsOnline] = useState(false);
+  const [isPartLoadAvailable, setIsPartLoadAvailable] = useState(false);
+
+  // Separate loading flags for clarity
   const [isStatusLoading, setIsStatusLoading] = useState(true);
+  const [isStatusToggleLoading, setIsStatusToggleLoading] = useState(false);
+  const [isPartToggleLoading, setIsPartToggleLoading] = useState(false);
+
   const [accessToken, setAccessToken] = useState(null);
-  const [isToggleLoading, setIsToggleLoading] = useState(false);
-  
-  
+
   const [pendingBookings, setPendingBookings] = useState([]);
-  
 
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [userName, setUserName] = useState('Hello, Driver');
   const [userPhone, setUserPhone] = useState('');
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
 
-  
   const prevCountRef = useRef(0);
   const isFirstLoad = useRef(true);
   const notificationSound = useRef(null);
 
-  
   useEffect(() => {
     console.log('[Sound] Initializing sound object...');
-    notificationSound.current = new Sound('notification.mp3', Sound.MAIN_BUNDLE, (error) => {
-      if (error) {
-        console.log('[Sound] Failed to load the sound', error);
-        return;
-      }
-      console.log(`[Sound] Sound loaded successfully. Duration: ${notificationSound.current.getDuration()}s`);
-    });
+    notificationSound.current = new Sound(
+      'notification.mp3',
+      Sound.MAIN_BUNDLE,
+      error => {
+        if (error) {
+          console.log('[Sound] Failed to load the sound', error);
+          return;
+        }
+        console.log(
+          `[Sound] Sound loaded successfully. Duration: ${notificationSound.current.getDuration()}s`,
+        );
+      },
+    );
 
     return () => {
       if (notificationSound.current) {
@@ -229,7 +247,7 @@ const DashboardScreen = ({ navigation, route }) => {
   const playNotificationSound = () => {
     if (notificationSound.current) {
       console.log('[Sound] Attempting to play sound...');
-      notificationSound.current.play((success) => {
+      notificationSound.current.play(success => {
         if (success) {
           console.log('[Sound] Playback finished successfully');
         } else {
@@ -249,8 +267,21 @@ const DashboardScreen = ({ navigation, route }) => {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (response.data?.success) {
-        const onlineStatus = response.data.data.availability.is_online;
-        setIsOnline(onlineStatus);
+        const availability = response.data.data?.availability || {};
+        // tolerate multiple shapes
+        const onlineStatus =
+          availability.is_online ?? response.data.data?.is_online ?? false;
+        const partLoadVal =
+          availability.is_available_for_part_load ??
+          response.data.data?.is_available_for_part_load;
+        // server returns 0/1 maybe, so normalize:
+        const partLoadBool =
+          typeof partLoadVal !== 'undefined'
+            ? Number(partLoadVal) === 0 // per your API 0 => ON
+            : false;
+
+        setIsOnline(Boolean(onlineStatus));
+        setIsPartLoadAvailable(Boolean(partLoadBool));
       }
     } catch (error) {
       console.error(
@@ -262,49 +293,49 @@ const DashboardScreen = ({ navigation, route }) => {
     }
   };
 
-  
   const checkForNewBookings = async () => {
     try {
-      console.log("Booking Data fetched")
+      console.log('Booking Data fetched');
       const token = await AsyncStorage.getItem('@user_token');
       if (!token) return;
 
-      
-      const response = await axios.get(`${API_URL}/api/vendor/booking-requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get(
+        `${API_URL}/api/vendor/booking-requests`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       if (response.data?.success) {
         const currentRequests = response.data.data?.requests || [];
         const currentCount = currentRequests.length;
 
-        
         setPendingBookings(currentRequests);
 
-        
         if (currentCount > prevCountRef.current && !isFirstLoad.current) {
-          console.log(`[Sound Trigger] New booking detected! Previous: ${prevCountRef.current}, Current: ${currentCount}`);
+          console.log(
+            `[Sound Trigger] New booking detected! Previous: ${prevCountRef.current}, Current: ${currentCount}`,
+          );
           playNotificationSound();
-          Alert.alert("New Booking!", "You have a new pending request.");
+          Alert.alert('New Booking!', 'You have a new pending request.');
         }
 
         prevCountRef.current = currentCount;
         isFirstLoad.current = false;
       }
     } catch (error) {
-      console.error("[Polling] Error fetching bookings:", error.message);
+      console.error('[Polling] Error fetching bookings:', error.message);
     }
   };
 
-  
   useEffect(() => {
     let intervalId;
 
     if (isFocused) {
-      checkForNewBookings(); 
+      checkForNewBookings();
       intervalId = setInterval(() => {
         checkForNewBookings();
-      }, 5000); 
+      }, 5000);
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -323,7 +354,6 @@ const DashboardScreen = ({ navigation, route }) => {
       if (token) {
         setAccessToken(token);
         fetchInitialStatus(token);
-        
       } else {
         Alert.alert('Authentication Error', 'Your session is invalid.', [
           { text: 'OK', onPress: () => navigation.replace('Login') },
@@ -365,13 +395,15 @@ const DashboardScreen = ({ navigation, route }) => {
       );
     });
 
+  // Driver online/offline toggle
   const handleStatusToggle = async newValue => {
     const previousValue = isOnline;
     setIsOnline(newValue);
-    setIsToggleLoading(true);
+    setIsStatusToggleLoading(true);
 
     try {
-      if (!accessToken) throw new Error('Token missing.');
+      const token = accessToken || (await AsyncStorage.getItem('@user_token'));
+      if (!token) throw new Error('Token missing.');
 
       let endpoint = '';
       let payload = {};
@@ -389,15 +421,86 @@ const DashboardScreen = ({ navigation, route }) => {
       }
 
       await axios.post(endpoint, payload, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
+      // Optionally re-fetch initial status to ensure full consistency
+      await fetchInitialStatus(token);
     } catch (error) {
       console.error('Toggle error:', error.response?.data || error.message);
       Alert.alert('Error', 'Could not update status.');
       setIsOnline(previousValue);
     } finally {
-      setIsToggleLoading(false);
+      setIsStatusToggleLoading(false);
+    }
+  };
+
+  // Part-load availability toggle (completely separate)
+  const handlePartLoadStatusToggle = async newValue => {
+    const previousValue = isPartLoadAvailable;
+    // Optimistic UI update for part-load switch only
+    setIsPartLoadAvailable(newValue);
+    setIsPartToggleLoading(true);
+
+    try {
+      const token = accessToken || (await AsyncStorage.getItem('@user_token'));
+      if (!token) throw new Error('Authentication token not found.');
+
+      // Read vendor id from AsyncStorage (you mentioned it's stored as a string)
+      const vendorIdStr = await AsyncStorage.getItem('@vendor_id');
+      const vendorId = vendorIdStr ? parseInt(vendorIdStr, 10) : null;
+      if (!vendorId) throw new Error('Vendor id not found in storage.');
+
+      // Mapping you requested: if ON then 0, if OFF then 1
+      const is_available_for_part_load = newValue ? 0 : 1;
+
+      const payload = {
+        vendor_id: vendorId,
+        is_available_for_part_load,
+      };
+
+      const response = await axios.post(
+        `${API_URL}/api/part-load-checker`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (
+        response.data &&
+        (response.data.status === true || response.data.success === true)
+      ) {
+        const serverVal =
+          response.data.data?.is_available_for_part_load ??
+          response.data?.is_available_for_part_load;
+
+        // If server returns 0/1, convert to boolean (0 -> true (ON), 1 -> false (OFF))
+        if (typeof serverVal !== 'undefined') {
+          setIsPartLoadAvailable(Number(serverVal) === 0);
+        } else {
+          setIsPartLoadAvailable(newValue);
+        }
+
+        // Optionally show confirmation
+        // Alert.alert('Success', response.data.message || 'Part-load status updated successfully.');
+      } else {
+        const msg =
+          response.data?.message || 'Failed to update part-load status.';
+        throw new Error(msg);
+      }
+    } catch (error) {
+      console.error(
+        'Part-load toggle error:',
+        error.response?.data || error.message || error,
+      );
+      Alert.alert(
+        'Error',
+        'Could not update part-load status. Please try again.',
+      );
+      // revert UI change
+      setIsPartLoadAvailable(previousValue);
+    } finally {
+      setIsPartToggleLoading(false);
     }
   };
 
@@ -417,18 +520,23 @@ const DashboardScreen = ({ navigation, route }) => {
     }, 300);
   };
 
-  const formatDisplayDate = (dateString) => {
+  const formatDisplayDate = dateString => {
     if (!dateString) return 'N/A';
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
-        day: 'numeric', month: 'short'
+        day: 'numeric',
+        month: 'short',
       });
-    } catch (e) { return dateString; }
+    } catch (e) {
+      return dateString;
+    }
   };
 
-  
   const renderPendingItem = ({ item }) => (
-    <TouchableOpacity style={styles.historyItem} onPress={() => navigation.navigate('BookingHistory')}>
+    <TouchableOpacity
+      style={styles.historyItem}
+      onPress={() => navigation.navigate('BookingHistory')}
+    >
       <View style={styles.historyItemIcon}>
         <Text>🔔</Text>
       </View>
@@ -438,16 +546,15 @@ const DashboardScreen = ({ navigation, route }) => {
           {item.pickup_location?.address || 'Unknown'}
         </Text>
         <Text style={styles.historyItemDate}>
-          {formatDisplayDate(item.schedule?.pickup_datetime)} • {item.material?.name}
+          {formatDisplayDate(item.schedule?.pickup_datetime)} •{' '}
+          {item.material?.name}
         </Text>
       </View>
       <View style={styles.historyItemRight}>
         <Text style={styles.historyItemEarnings}>
           ₹{item.pricing?.final_amount || item.pricing?.estimated_price || '0'}
         </Text>
-        <Text
-          style={[styles.historyItemStatus, styles.status_pending]}
-        >
+        <Text style={[styles.historyItemStatus, styles.status_pending]}>
           NEW
         </Text>
       </View>
@@ -499,7 +606,7 @@ const DashboardScreen = ({ navigation, route }) => {
             <View style={styles.notificationIconContainer}>
               <Icon name="notification" size={20} color="#fff" />
               {pendingBookings.length > 0 && (
-                 <View style={styles.notificationBadge} />
+                <View style={styles.notificationBadge} />
               )}
             </View>
           </TouchableOpacity>
@@ -511,6 +618,7 @@ const DashboardScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* DRIVER ONLINE/OFFLINE */}
         <Animated.View
           style={[
             styles.statusCard,
@@ -550,7 +658,7 @@ const DashboardScreen = ({ navigation, route }) => {
           </View>
 
           <View style={styles.statusRight}>
-            {isToggleLoading || isStatusLoading ? (
+            {isStatusToggleLoading || isStatusLoading ? (
               <ActivityIndicator color={THEME.primary} />
             ) : (
               <Switch
@@ -559,7 +667,70 @@ const DashboardScreen = ({ navigation, route }) => {
                 trackColor={{ false: THEME.border, true: `${THEME.primary}40` }}
                 thumbColor={isOnline ? THEME.primary : THEME.placeholder}
                 style={styles.statusSwitch}
-                disabled={isToggleLoading || isStatusLoading}
+                disabled={isStatusToggleLoading || isStatusLoading}
+              />
+            )}
+          </View>
+        </Animated.View>
+
+        {/* PART-LOAD STATUS (separate) */}
+        <Animated.View
+          style={[
+            styles.statusCard,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }, { scale: cardScale }],
+            },
+          ]}
+        >
+          <View style={styles.statusLeft}>
+            <View style={styles.statusHeader}>
+              <View style={styles.statusIndicator}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor: isPartLoadAvailable
+                        ? THEME.success
+                        : THEME.error,
+                    },
+                  ]}
+                />
+                <Text style={styles.statusTitle}>Part Load Status</Text>
+              </View>
+            </View>
+
+            <Text
+              style={[
+                styles.statusText,
+                {
+                  color: isPartLoadAvailable ? THEME.success : THEME.error,
+                },
+              ]}
+            >
+              {isPartLoadAvailable ? 'Part Load' : 'Part Load Not Available'}
+            </Text>
+
+            <Text style={styles.statusSubtitle}>
+              {isPartLoadAvailable
+                ? 'Accepting part-load requests'
+                : 'Part-load not available'}
+            </Text>
+          </View>
+
+          <View style={styles.statusRight}>
+            {isPartToggleLoading || isStatusLoading ? (
+              <ActivityIndicator color={THEME.primary} />
+            ) : (
+              <Switch
+                value={isPartLoadAvailable}
+                onValueChange={handlePartLoadStatusToggle}
+                trackColor={{ false: THEME.border, true: `${THEME.primary}40` }}
+                thumbColor={
+                  isPartLoadAvailable ? THEME.primary : THEME.placeholder
+                }
+                style={styles.statusSwitch}
+                disabled={isPartToggleLoading || isStatusLoading}
               />
             )}
           </View>
@@ -600,7 +771,6 @@ const DashboardScreen = ({ navigation, route }) => {
         >
           <View style={styles.overviewHeader}>
             <Icon name="notification" size={22} color={THEME.primary} />
-            {/* --- CHANGED Title --- */}
             <Text style={styles.overviewTitle}>New Bookings</Text>
             <TouchableOpacity
               onPress={() =>
@@ -611,7 +781,6 @@ const DashboardScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
 
-          {/* --- CHANGED List Data --- */}
           {pendingBookings.length > 0 ? (
             <FlatList
               data={pendingBookings.slice(0, 3)}
@@ -620,9 +789,7 @@ const DashboardScreen = ({ navigation, route }) => {
               scrollEnabled={false}
             />
           ) : (
-            <Text style={styles.noHistoryText}>
-              No new booking requests.
-            </Text>
+            <Text style={styles.noHistoryText}>No new booking requests.</Text>
           )}
         </Animated.View>
       </ScrollView>

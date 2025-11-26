@@ -28,8 +28,8 @@ android {
         applicationId "com.digittransway"  // Keep this as is
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
-        versionName "1.9"
+        versionCode 11
+        versionName "2.2"
     }
     
     signingConfigs {
@@ -68,4 +68,10 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    implementation "com.google.android.gms:play-services-location:21.0.1"
+    implementation "com.google.android.gms:play-services-base:18.2.0"
+    implementation "com.google.android.gms:play-services-auth:20.7.0"  
+
+
 }

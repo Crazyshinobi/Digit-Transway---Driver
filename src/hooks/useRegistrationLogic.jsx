@@ -522,7 +522,7 @@ export const useRegistrationLogic = ({ route, navigation }) => {
 
       if (userTypeKey) registrationData.append('user_type_key', userTypeKey);
       registrationData.append('contact_number', phoneNumber);
-console.log('Submitting registration with data:', registrationData);
+      console.log('Submitting registration with data:', registrationData);
       const res = await axios.post(
         `${API_URL}/api/vendor/auth/complete-registration`,
         registrationData,
@@ -663,24 +663,23 @@ console.log('Submitting registration with data:', registrationData);
   //   return true;
   // };
 
-const isStep5ValidPure = () => {
-  const effectivePanNumber = (formData.pan_number || "").trim();
+  const isStep5ValidPure = () => {
+    const effectivePanNumber = (formData.pan_number || '').trim();
 
-  const effectiveRcNumber = formData.rc_manual
-    ? (formData.rc_number_manual || "").trim()
-    : (formData.rc_number || "").trim();
+    const effectiveRcNumber = formData.rc_manual
+      ? (formData.rc_number_manual || '').trim()
+      : (formData.rc_number || '').trim();
 
-  const effectiveDlNumber = formData.dl_manual
-    ? (formData.dl_number_manual || "").trim()
-    : (formData.dl_number || "").trim();
+    const effectiveDlNumber = formData.dl_manual
+      ? (formData.dl_number_manual || '').trim()
+      : (formData.dl_number || '').trim();
 
-  // If nothing is entered in PAN/RC/DL — it's still valid
-  // If something IS entered, we can add optional format validation
-  // But no images required.
+    // If nothing is entered in PAN/RC/DL — it's still valid
+    // If something IS entered, we can add optional format validation
+    // But no images required.
 
-  return true; // Step always valid without images
-};
-
+    return true; // Step always valid without images
+  };
 
   const isStep6ValidPure = () => {
     //digittransway.com/aadhar-callback';

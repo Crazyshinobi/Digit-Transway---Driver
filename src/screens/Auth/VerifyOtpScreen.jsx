@@ -147,10 +147,12 @@ const VerifyOTPScreen = ({ navigation, route }) => {
 
       if (response.data?.success) {
         const accessToken = response.data.data?.access_token;
+        const vendorId = response.data.data?.vendor?.id;
         if (accessToken) {
           try {
             await AsyncStorage.setItem('@user_token', accessToken);
             await AsyncStorage.setItem('@user_phone_number', phoneNumber);
+            await AsyncStorage.setItem('@vendor_id', vendorId.toString());
             navigation.navigate('AuthLoading');
           } catch (e) {
             console.error('Failed to save session:', e);

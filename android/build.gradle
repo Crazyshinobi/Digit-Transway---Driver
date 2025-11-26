@@ -6,6 +6,9 @@ buildscript {
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.1.20"
+        googlePlayServicesVersion = "20.7.0"  // Change this
+        googlePlayServicesLocationVersion = "21.0.1"
+        googlePlayServicesAuthVersion = "20.7.0"  // Add this
     }
     repositories {
         google()
@@ -19,3 +22,20 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+    }
+    
+    // Force resolution strategy
+    configurations.all {
+        resolutionStrategy {
+            force 'com.google.android.gms:play-services-location:21.0.1'
+            force 'com.google.android.gms:play-services-base:18.2.0'
+            force 'com.google.android.gms:play-services-auth:20.7.0'
+        }
+    }
+}
