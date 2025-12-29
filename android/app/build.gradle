@@ -22,10 +22,10 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.digittransway"  // Changed from "com.digittransway.driver"
+    namespace "com.digittransway.driver"  // Changed from "com.digittransway.driver"
     
     defaultConfig {
-        applicationId "com.digittransway"  // Keep this as is
+        applicationId "com.digittransway.driver" // Match this to your namespace        
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 11

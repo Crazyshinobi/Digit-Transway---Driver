@@ -242,6 +242,19 @@ const BookingHistoryScreen = ({ navigation, route }) => {
       <View style={styles.cardBody}>
         <Text style={styles.bookingIdText}>Booking ID: {item.booking_id}</Text>
 
+        {activeTab === 'pending' && (
+          <>
+            <Text style={styles.detailText}>
+              <Text style={{ fontWeight: 'bold' }}>Pickup: </Text>
+              {item.pickup_location?.address}
+            </Text>
+            <Text style={styles.detailText}>
+              <Text style={{ fontWeight: 'bold' }}>Drop: </Text>
+              {item.drop_location?.address}
+            </Text>
+          </>
+        )}
+
         {item.user && (
           <>
             <Text style={styles.detailText}>Customer: {item.user.name}</Text>
@@ -634,7 +647,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   routeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: THEME.textPrimary,
     flex: 1,

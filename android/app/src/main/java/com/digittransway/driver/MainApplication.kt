@@ -1,7 +1,7 @@
-package com.digittransway
+package com.digittransway.driver // Added .driver to match the new namespace
 
 import android.app.Application
-import com.digittransway.BuildConfig
+import com.digittransway.driver.BuildConfig // Update this to match your namespace
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
