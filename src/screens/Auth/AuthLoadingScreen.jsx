@@ -48,6 +48,7 @@ const AuthLoadingScreen = () => {
           console.log('[AuthLoading] Storing vendor data to AsyncStorage.');
           await AsyncStorage.setItem('@user_name', vendorData.name || '');
           await AsyncStorage.setItem('@user_email', vendorData.email || '');
+          await AsyncStorage.setItem('@user_type', vendorData.user_type.type_key || '')
           
           await AsyncStorage.setItem(
             '@user_phone_number',

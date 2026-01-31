@@ -60,6 +60,8 @@ const Icon = ({ name, size = 24, color, style }) => {
         return '🛡️';
       case 'payment':
         return '💵';
+      case 'fleet':
+        return '🚚';
       default:
         return '❔';
     }
@@ -76,6 +78,7 @@ const SidebarMenu = ({
   isProfileComplete,
   userName,
   userPhone,
+  userType
 }) => {
   const slideAnim = useRef(new Animated.Value(-width * 0.75)).current;
 
@@ -100,6 +103,12 @@ const SidebarMenu = ({
   const navigateAndClose = screen => {
     navigation.navigate(screen, { accessToken });
     onClose();
+  };
+
+  const [isFleetOpen, setIsFleetOpen] = useState(false);
+
+  const toggleFleet = () => {
+    setIsFleetOpen(prev => !prev);
   };
 
   return (
@@ -142,6 +151,44 @@ const SidebarMenu = ({
                     </View>
                     <Text style={styles.sidebarMenuText}>View Profile</Text>
                   </TouchableOpacity>
+
+                  {userType === 'fleet_owner' && (
+                      <TouchableOpacity
+                        style={styles.sidebarMenuItem}
+                        onPress={toggleFleet}
+                      >
+                        <View style={styles.menuIconContainer}>
+                          <Icon name="fleet" size={20} color={THEME.primary} />
+                        </View>
+                        <Text style={styles.sidebarMenuText}>
+                          Fleet Management
+                        </Text>
+                        <Text style={styles.expandIcon}>
+                          {isFleetOpen ? '▲' : '▼'}
+                        </Text>
+                      </TouchableOpacity>
+                  )}
+
+                  {isFleetOpen && (
+                    <View style={styles.subMenuContainer}>
+                      <TouchableOpacity
+                        style={styles.subMenuItem}
+                        onPress={() => navigateAndClose('FleetVehiclesScreen')} // list screen
+                      >
+                        <Text style={styles.sidebarMenuText}>My Vehicles</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.subMenuItem}
+                        onPress={() =>
+                          navigateAndClose('AddFleetVehicleScreen')
+                        }
+                      >
+                        <Text style={styles.sidebarMenuText}>Add Vehicle</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
                   <TouchableOpacity
                     style={styles.sidebarMenuItem}
                     onPress={() => navigateAndClose('BookingHistory')}
@@ -211,6 +258,7 @@ const DashboardScreen = ({ navigation, route }) => {
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [userName, setUserName] = useState('Hello, Driver');
   const [userPhone, setUserPhone] = useState('');
+  const [userType, setUserType] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -346,6 +394,7 @@ const DashboardScreen = ({ navigation, route }) => {
     const bootstrap = async () => {
       const token = await AsyncStorage.getItem('@user_token');
       const name = await AsyncStorage.getItem('@user_name');
+      const user_type = await AsyncStorage.getItem('@user_type');
       const phone = await AsyncStorage.getItem('@user_phone_number');
 
       if (name) setUserName(name);
@@ -359,6 +408,9 @@ const DashboardScreen = ({ navigation, route }) => {
           { text: 'OK', onPress: () => navigation.replace('Login') },
         ]);
       }
+
+      // Load complete
+      setUserType(user_type);
     };
     bootstrap();
 
@@ -574,6 +626,7 @@ const DashboardScreen = ({ navigation, route }) => {
         isProfileComplete={isProfileComplete}
         userName={userName}
         userPhone={userPhone}
+        userType= {userType}
       />
 
       <Animated.View
@@ -1150,6 +1203,22 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: THEME.warning,
     marginLeft: 8,
+  },
+  subMenuContainer: {
+    marginLeft: 52, // align under icon+text
+    marginTop: 4,
+  },
+  subMenuItem: {
+    paddingVertical: 6,
+  },
+  subMenuText: {
+    fontSize: 13,
+    color: '#4B5563',
+  },
+  expandIcon: {
+    marginLeft: 'auto',
+    fontSize: 12,
+    color: '#6B7280',
   },
 });
 

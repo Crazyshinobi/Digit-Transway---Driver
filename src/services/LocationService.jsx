@@ -70,7 +70,7 @@ async function sendLocationToServer(position) {
         text,
       );
     } else {
-      const json = await resp.json().catch(() => null);
+      const json = await resp.json().catch(() => null);      
       console.log('[LocationService] location update success', json);
     }
   } catch (err) {

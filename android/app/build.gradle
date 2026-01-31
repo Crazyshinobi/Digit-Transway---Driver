@@ -22,14 +22,14 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.digittransway.driver"  // Changed from "com.digittransway.driver"
+    namespace "com.digittransway"  // Changed from "com.digittransway.driver"
     
     defaultConfig {
-        applicationId "com.digittransway.driver" // Match this to your namespace        
+        applicationId "com.digittransway"  // Keep this as is
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "2.2"
+        versionCode 15
+        versionName "2.6"
     }
     
     signingConfigs {
@@ -72,6 +72,5 @@ dependencies {
     implementation "com.google.android.gms:play-services-location:21.0.1"
     implementation "com.google.android.gms:play-services-base:18.2.0"
     implementation "com.google.android.gms:play-services-auth:20.7.0"  
-
-
 }
+

@@ -21,7 +21,8 @@ import BookingHistoryScreen from './src/screens/Main/BookingHistoryScreen';
 import BookingTrackScreen from './src/screens/Main/BookingTrackScreen';
 import ProfileScreen from './src/screens/Main/ProfileScreen';
 import PaymentHistoryScreen from './src/screens/Main/PaymentHistoryScreen';
-
+import AddFleetVehicleScreen from './src/screens/Main/AddFleetVehicleScreen';
+import FleetVehiclesScreen from "./src/screens/Main/FleetVehiclesScreen"
 import { RegistrationProvider } from './src/context/RegistrationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import locationService from './src/services/LocationService';
@@ -45,6 +46,8 @@ export type RootStackParamList = {
   BookingTrackScreen: { bookingId: number | string };
   Profile: undefined;
   PaymentHistoryScreen: undefined;
+  AddFleetVehicleScreen: undefined;
+  FleetVehiclesScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -142,6 +145,8 @@ const App = () => {
         <Stack.Screen name="BookingTrackScreen" component={BookingTrackScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="PaymentHistoryScreen" component={PaymentHistoryScreen} />
+        <Stack.Screen name="AddFleetVehicleScreen" component={AddFleetVehicleScreen} />
+        <Stack.Screen name="FleetVehiclesScreen" component={FleetVehiclesScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>
